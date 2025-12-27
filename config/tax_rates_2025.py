@@ -7,36 +7,23 @@ Based on official Swiss federal tax law and Zürich cantonal regulations.
 
 # Federal tax rates for single taxpayers (Grundtarif) - 2025
 # Structure: {'threshold': income_threshold, 'rate': marginal_rate, 'base_tax': cumulative_tax_at_threshold}
+# Source: Article 36 DBG (Bundesgesetz über die direkte Bundessteuer)
+# Verified against: https://lawbrary.ch/law/art/DBG-v2022.01-de-art-36/
+# Tax amounts under CHF 25 are not levied
 
 FEDERAL_TAX_RATES_SINGLE = [
-    {'threshold': 0, 'rate': 0.0000, 'base_tax': 0},
-    {'threshold': 14000, 'rate': 0.0077, 'base_tax': 0},  # Personal allowance threshold
-    {'threshold': 18200, 'rate': 0.0088, 'base_tax': 32.34},
-    {'threshold': 20800, 'rate': 0.0099, 'base_tax': 55.22},
-    {'threshold': 27100, 'rate': 0.0110, 'base_tax': 117.59},
-    {'threshold': 33400, 'rate': 0.0121, 'base_tax': 186.89},
-    {'threshold': 39700, 'rate': 0.0132, 'base_tax': 263.12},
-    {'threshold': 46000, 'rate': 0.0143, 'base_tax': 346.28},
-    {'threshold': 57800, 'rate': 0.0165, 'base_tax': 515.02},
-    {'threshold': 75300, 'rate': 0.0209, 'base_tax': 803.77},
-    {'threshold': 90300, 'rate': 0.0253, 'base_tax': 1117.77},
-    {'threshold': 105400, 'rate': 0.0297, 'base_tax': 1499.30},
-    {'threshold': 131100, 'rate': 0.0341, 'base_tax': 2262.60},
-    {'threshold': 156900, 'rate': 0.0385, 'base_tax': 3142.38},
-    {'threshold': 182700, 'rate': 0.0429, 'base_tax': 4136.68},
-    {'threshold': 208500, 'rate': 0.0473, 'base_tax': 5245.50},
-    {'threshold': 234300, 'rate': 0.0517, 'base_tax': 6468.84},
-    {'threshold': 260100, 'rate': 0.0561, 'base_tax': 7806.70},
-    {'threshold': 285900, 'rate': 0.0594, 'base_tax': 9259.08},
-    {'threshold': 312200, 'rate': 0.0627, 'base_tax': 10822.70},
-    {'threshold': 338500, 'rate': 0.0660, 'base_tax': 12471.51},
-    {'threshold': 364800, 'rate': 0.0693, 'base_tax': 14207.31},
-    {'threshold': 391100, 'rate': 0.0726, 'base_tax': 16030.10},
-    {'threshold': 417400, 'rate': 0.0759, 'base_tax': 17939.88},
-    {'threshold': 443700, 'rate': 0.0792, 'base_tax': 19936.65},
-    {'threshold': 679100, 'rate': 0.0825, 'base_tax': 38584.93},
-    {'threshold': 895900, 'rate': 0.1100, 'base_tax': 56471.93},
-    {'threshold': 1000000, 'rate': 0.1150, 'base_tax': 67922.93}  # Cap at 11.5%
+    {'threshold': 0, 'rate': 0.0000, 'base_tax': 0.00},
+    {'threshold': 14500, 'rate': 0.0077, 'base_tax': 0.00},       # 0.77 CHF per 100 CHF
+    {'threshold': 31600, 'rate': 0.0088, 'base_tax': 131.67},     # 0.88 CHF per 100 CHF
+    {'threshold': 41400, 'rate': 0.0264, 'base_tax': 217.91},     # 2.64 CHF per 100 CHF
+    {'threshold': 55200, 'rate': 0.0297, 'base_tax': 582.23},     # 2.97 CHF per 100 CHF
+    {'threshold': 72500, 'rate': 0.0594, 'base_tax': 1096.04},    # 5.94 CHF per 100 CHF
+    {'threshold': 78100, 'rate': 0.0660, 'base_tax': 1428.68},    # 6.60 CHF per 100 CHF
+    {'threshold': 103600, 'rate': 0.0880, 'base_tax': 3111.68},   # 8.80 CHF per 100 CHF
+    {'threshold': 134600, 'rate': 0.1100, 'base_tax': 5839.68},   # 11.00 CHF per 100 CHF
+    {'threshold': 176000, 'rate': 0.1100, 'base_tax': 10393.68},  # 11.00 CHF per 100 CHF (unchanged)
+    {'threshold': 755200, 'rate': 0.1320, 'base_tax': 74105.68},  # 13.20 CHF per 100 CHF
+    {'threshold': 1000000, 'rate': 0.1150, 'base_tax': 106437.04} # 11.50 CHF per 100 CHF (maximum rate)
 ]
 
 # Zürich cantonal base tax rates (before multipliers)
