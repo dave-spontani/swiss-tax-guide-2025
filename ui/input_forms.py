@@ -107,17 +107,38 @@ def render_deduction_inputs():
                 "Annual Public Transport Cost (CHF)",
                 min_value=0.0,
                 max_value=10_000.0,
-                value=2_400.0,
+                value=0.0,
                 step=100.0,
                 help="Enter your annual GA or travel pass cost (2nd class)"
             )
 
-        # Canteen subsidy
-        has_canteen = st.checkbox(
-            "I have canteen or meal subsidy from employer",
+        st.divider()
+
+        # Professional expenses deduction (opt-in)
+        claim_professional = st.checkbox(
+            "Claim Professional Expenses Deduction",
             value=False,
-            help=HELP_TEXT["meals"]
+            help="Pauschal deduction for tools, software, professional literature, work clothes (3% of salary, min CHF 2,000, max CHF 4,000). Technically no proof required, but use responsibly."
         )
+
+        if claim_professional:
+            st.caption("⚠️ This reduces your taxable income. Ensure you have legitimate work-related expenses.")
+
+        # Meal expenses deduction (opt-in)
+        claim_meals = st.checkbox(
+            "Claim Meal Expense Deduction",
+            value=False,
+            help="Deduction for eating lunch away from home during work (CHF 1,600-3,200/year). Only claim if you cannot reasonably eat at home."
+        )
+
+        has_canteen = False
+        if claim_meals:
+            has_canteen = st.checkbox(
+                "I have canteen or meal subsidy from employer",
+                value=False,
+                help="With subsidy: CHF 1,600/year | Without subsidy: CHF 3,200/year"
+            )
+            st.caption("⚠️ Only claim if you cannot eat lunch at home due to distance/time constraints.")
 
     with st.sidebar.expander("🏥 Insurance"):
         insurance_premiums = st.number_input(
@@ -179,6 +200,8 @@ def render_deduction_inputs():
     return {
         'transport_type': transport_type,
         'public_transport_cost': public_transport_cost,
+        'claim_professional': claim_professional,
+        'claim_meals': claim_meals,
         'has_canteen': has_canteen,
         'insurance_premiums': insurance_premiums,
         'premium_subsidies': premium_subsidies,

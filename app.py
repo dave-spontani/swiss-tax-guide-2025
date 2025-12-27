@@ -48,14 +48,20 @@ def collect_deductions(user_profile: UserProfile, deduction_inputs: dict) -> Lis
     validator = DeductionValidator()
     deductions = []
 
-    # 1. Automatic deductions (professional expenses, meals)
-    auto_deductions = validator.get_all_automatic_deductions(
-        user_profile,
-        has_canteen_subsidy=deduction_inputs['has_canteen']
-    )
-    deductions.extend(auto_deductions)
+    # 1. Professional expenses (only if explicitly claimed)
+    if deduction_inputs.get('claim_professional', False):
+        professional_deduction = validator.calculate_professional_expenses(user_profile.gross_salary)
+        deductions.append(professional_deduction)
 
-    # 2. Commuting deduction
+    # 2. Meal expenses (only if explicitly claimed)
+    if deduction_inputs.get('claim_meals', False):
+        meal_deduction = validator.calculate_meal_expenses(
+            has_canteen_subsidy=deduction_inputs['has_canteen'],
+            employment_percentage=user_profile.employment_percentage
+        )
+        deductions.append(meal_deduction)
+
+    # 3. Commuting deduction
     transport_type_map = {
         "Public Transport": "public_transport",
         "Bicycle": "bicycle",
@@ -74,7 +80,7 @@ def collect_deductions(user_profile: UserProfile, deduction_inputs: dict) -> Lis
         if commuting_deduction.amount > 0:
             deductions.append(commuting_deduction)
 
-    # 3. Insurance premiums
+    # 4. Insurance premiums
     if deduction_inputs['insurance_premiums'] > 0:
         insurance_deduction = validator.calculate_insurance_deduction(
             annual_premiums=deduction_inputs['insurance_premiums'],
@@ -84,7 +90,7 @@ def collect_deductions(user_profile: UserProfile, deduction_inputs: dict) -> Lis
         if insurance_deduction.amount > 0:
             deductions.append(insurance_deduction)
 
-    # 4. Pillar 3a
+    # 5. Pillar 3a
     if deduction_inputs['pillar3a_contribution'] > 0:
         is_valid, message, max_allowed, pillar3a_deduction = validator.validate_pillar3a_contribution(
             deduction_inputs['pillar3a_contribution'],
@@ -96,7 +102,7 @@ def collect_deductions(user_profile: UserProfile, deduction_inputs: dict) -> Lis
         elif not is_valid:
             st.sidebar.warning(f"⚠️ Pillar 3a: {message}")
 
-    # 5. Education costs
+    # 6. Education costs
     if deduction_inputs['education_costs'] > 0:
         is_valid, message, education_deduction = validator.calculate_education_deduction(
             deduction_inputs['education_costs'],
@@ -108,7 +114,7 @@ def collect_deductions(user_profile: UserProfile, deduction_inputs: dict) -> Lis
         elif not is_valid:
             st.sidebar.info(f"ℹ️ Education: {message}")
 
-    # 6. Charitable donations
+    # 7. Charitable donations
     if deduction_inputs['charitable_donations'] > 0:
         is_valid, message, charitable_deduction = validator.calculate_charitable_deduction(
             deduction_inputs['charitable_donations'],
@@ -120,7 +126,7 @@ def collect_deductions(user_profile: UserProfile, deduction_inputs: dict) -> Lis
         elif not is_valid:
             st.sidebar.info(f"ℹ️ Charitable: {message}")
 
-    # 7. Political donations
+    # 8. Political donations
     if deduction_inputs['political_donations'] > 0:
         is_valid, message, political_deduction = validator.calculate_political_donation_deduction(
             deduction_inputs['political_donations']
@@ -144,6 +150,15 @@ def main():
     st.markdown("""
     Calculate your Swiss taxes and discover all available deductions to optimize your tax burden.
     This tool focuses on **single, employed individuals** in Zürich canton.
+    """)
+
+    # Important notice about deductions
+    st.info("""
+    **📌 Important:** Deductions are now **opt-in**. The calculator matches the official Zürich tax calculator
+    by NOT automatically applying professional expenses or meal deductions.
+
+    To claim these deductions, explicitly check the boxes in the sidebar. The official calculator
+    calculates taxes on your gross income minus social security only, unless you manually enter deductions.
     """)
 
     # Sidebar inputs
