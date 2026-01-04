@@ -44,15 +44,15 @@ ZURICH_TAX_BRACKETS = [
     {'threshold': 263300,  'rate': 13},  # 13% on income above
 ]
 
-# Cantonal Steuerfuss (tax multiplier) - 2024
-CANTONAL_STEUERFUSS = 98  # 98% for Zurich canton
+# Cantonal Steuerfuss (tax multiplier) - 2026
+CANTONAL_STEUERFUSS = 95  # 95% for Zurich canton
 
-# Municipal Steuerfüsse (tax multipliers by municipality) - 2024
+# Municipal Steuerfüsse (tax multipliers by municipality) - 2026
 MUNICIPALITY_STEUERFUESSE = {
     'Zürich': 119,
     'Winterthur': 122,
     'Uster': 108,
-    'Dübendorf': 106,
+    'Dübendorf': 96,
     'Dietikon': 118,
     'Wetzikon': 105,
     'Horgen': 93,
@@ -80,15 +80,18 @@ WEALTH_TAX_BRACKETS = [
 WEALTH_DEDUCTION_PER_ADULT = 82200   # CHF 82,200 per adult
 WEALTH_DEDUCTION_PER_CHILD = 41100   # CHF 41,100 per child
 
+# Personalsteuer (flat personal tax)
+PERSONALSTEUER = 24  # CHF 24 annual personal tax
+
 # ============================================================================
 # CHURCH TAX MULTIPLIERS (Zurich)
 # ============================================================================
 
 CHURCH_TAX_MULTIPLIERS = {
     'none': 0,
-    'reformed': 0.10,           # 10% of (cantonal + municipal tax)
-    'catholic': 0.15,           # 15% of (cantonal + municipal tax)
-    'christian-catholic': 0.15  # 15% of (cantonal + municipal tax)
+    'reformed': 0.10,           # 10% of Einfache Staatssteuer
+    'catholic': 0.11,           # 11% of Einfache Staatssteuer
+    'christian-catholic': 0.15  # 15% of Einfache Staatssteuer (verify)
 }
 
 # ============================================================================

@@ -3,7 +3,7 @@ Zurich Cantonal Tax Calculation
 Based on StG § 35 (adjusted for 2024)
 """
 from typing import Dict, List
-from models.constants import ZURICH_TAX_BRACKETS, CANTONAL_STEUERFUSS
+from models.constants import ZURICH_TAX_BRACKETS, CANTONAL_STEUERFUSS, PERSONALSTEUER
 from models.tax_data import TaxResult
 
 
@@ -81,6 +81,10 @@ def calculate_zurich_tax(income: float, gemeinde_steuerfuss: int = 119, deductio
     # Step 2: Apply Steuerfüsse (tax multipliers)
     result.cantonal_tax = (einfache_staatssteuer * CANTONAL_STEUERFUSS) / 100
     result.municipal_tax = (einfache_staatssteuer * gemeinde_steuerfuss) / 100
+
+    # Step 3: Add Personalsteuer (flat CHF 24 personal tax)
+    result.personalsteuer = PERSONALSTEUER if taxable_income > 0 else 0
+
     result.total_cantonal_municipal = result.cantonal_tax + result.municipal_tax
 
     # Calculate effective rate (based on ORIGINAL income, not taxable income)

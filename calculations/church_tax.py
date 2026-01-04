@@ -13,11 +13,12 @@ def calculate_church_tax(
     """
     Calculate church tax for Zurich canton.
 
-    Church tax is calculated as a percentage of the total cantonal + municipal tax.
+    Church tax is calculated as a percentage of the Einfache Staatssteuer,
+    similar to how cantonal and municipal taxes are calculated.
 
     Args:
         einfache_staatssteuer: Base simple state tax
-        gemeinde_steuerfuss: Municipal tax multiplier
+        gemeinde_steuerfuss: Municipal tax multiplier (not used for church tax)
         religious_affiliation: 'none', 'reformed', 'catholic', 'christian-catholic'
         income: Gross income (for effective rate calculation)
 
@@ -32,14 +33,10 @@ def calculate_church_tax(
             'applied': False
         }
 
-    # Church tax is based on total cantonal + municipal tax
-    total_cantonal_municipal_tax = (
-        (einfache_staatssteuer * CANTONAL_STEUERFUSS / 100) +
-        (einfache_staatssteuer * gemeinde_steuerfuss / 100)
-    )
-
+    # Church tax is based on Einfache Staatssteuer (just like cantonal and municipal taxes)
+    # The multiplier represents the Steuerfuss as a decimal (e.g., 0.11 = 11%)
     multiplier = CHURCH_TAX_MULTIPLIERS.get(religious_affiliation, 0)
-    church_tax = total_cantonal_municipal_tax * multiplier
+    church_tax = einfache_staatssteuer * multiplier
     effective_rate = (church_tax / income * 100) if income > 0 else 0
 
     return {

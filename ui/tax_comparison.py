@@ -32,6 +32,7 @@ def calculate_complete_taxes(income: float, deductions: float, profile: UserProf
     result.einfache_staatssteuer = cant_result.einfache_staatssteuer
     result.cantonal_tax = cant_result.cantonal_tax
     result.municipal_tax = cant_result.municipal_tax
+    result.personalsteuer = cant_result.personalsteuer
     result.total_cantonal_municipal = cant_result.total_cantonal_municipal
     result.cantonal_effective_rate = cant_result.cantonal_effective_rate
     result.cantonal_marginal_rate = cant_result.cantonal_marginal_rate
@@ -100,6 +101,8 @@ def render_tax_comparison(profile: UserProfile, deductions: DeductionResult):
             st.metric("Federal Tax", format_currency(tax_no_deductions.federal_tax))
             st.metric("Cantonal Tax", format_currency(tax_no_deductions.cantonal_tax))
             st.metric("Municipal Tax", format_currency(tax_no_deductions.municipal_tax))
+            if tax_no_deductions.personalsteuer > 0:
+                st.metric("Personal Tax", format_currency(tax_no_deductions.personalsteuer))
             if tax_no_deductions.church_tax > 0:
                 st.metric("Church Tax", format_currency(tax_no_deductions.church_tax))
             st.divider()
@@ -116,6 +119,8 @@ def render_tax_comparison(profile: UserProfile, deductions: DeductionResult):
                      delta=f"-{format_percent((tax_no_deductions.federal_tax - tax_auto_deductions.federal_tax) / tax_no_deductions.federal_tax * 100)}")
             st.metric("Cantonal Tax", format_currency(tax_auto_deductions.cantonal_tax))
             st.metric("Municipal Tax", format_currency(tax_auto_deductions.municipal_tax))
+            if tax_auto_deductions.personalsteuer > 0:
+                st.metric("Personal Tax", format_currency(tax_auto_deductions.personalsteuer))
             st.divider()
             st.metric("TOTAL TAX", format_currency(tax_auto_deductions.total_tax))
             st.success(f"💰 Save: {format_currency(comparison.savings_from_automatic)}")
@@ -129,6 +134,8 @@ def render_tax_comparison(profile: UserProfile, deductions: DeductionResult):
             st.metric("Federal Tax", format_currency(tax_all_deductions.federal_tax))
             st.metric("Cantonal Tax", format_currency(tax_all_deductions.cantonal_tax))
             st.metric("Municipal Tax", format_currency(tax_all_deductions.municipal_tax))
+            if tax_all_deductions.personalsteuer > 0:
+                st.metric("Personal Tax", format_currency(tax_all_deductions.personalsteuer))
             st.divider()
             st.metric("TOTAL TAX", format_currency(tax_all_deductions.total_tax))
             st.success(f"🎯 Total savings: {format_currency(comparison.total_savings)} ({format_percent(comparison.total_savings_percent)})")

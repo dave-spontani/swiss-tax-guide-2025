@@ -137,8 +137,9 @@ class TaxResult:
 
     # Cantonal tax (Zurich)
     einfache_staatssteuer: float = 0.0
-    cantonal_tax: float = 0.0               # einfache × 98%
+    cantonal_tax: float = 0.0               # einfache × cantonal_steuerfuss
     municipal_tax: float = 0.0              # einfache × gemeinde_steuerfuss
+    personalsteuer: float = 0.0             # CHF 24 flat personal tax
     total_cantonal_municipal: float = 0.0
     cantonal_effective_rate: float = 0.0
     cantonal_marginal_rate: float = 0.0
@@ -169,6 +170,7 @@ class TaxResult:
             self.federal_tax +
             self.cantonal_tax +
             self.municipal_tax +
+            self.personalsteuer +
             self.church_tax +
             self.wealth_tax
         )
