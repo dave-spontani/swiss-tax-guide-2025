@@ -123,13 +123,17 @@ def render_automatic_deductions(profile: UserProfile) -> tuple[DeductionResult, 
             )
 
             if profile.claim_actual_commuting:
+                # Default to pauschal + 300 if no actual costs set yet
+                default_commuting = profile.actual_commuting_costs if profile.actual_commuting_costs > deductions.commuting_pauschal else (deductions.commuting_pauschal + 300)
+
                 profile.actual_commuting_costs = st.number_input(
                     "Actual commuting costs (CHF/year)",
-                    min_value=deductions.commuting_pauschal,
-                    value=profile.actual_commuting_costs if profile.actual_commuting_costs > 0 else 1000.0,
-                    step=100.0
+                    min_value=float(deductions.commuting_pauschal),
+                    value=float(default_commuting),
+                    step=100.0,
+                    help="Enter your actual annual commuting costs (must be higher than pauschal to claim)"
                 )
-                st.caption("Requires: Travel logs, public transport tickets, or car justification")
+                st.caption("📄 Requires: Travel logs, public transport tickets, or car justification")
 
         # Professional expenses
         if deductions.professional_expenses > 0:
@@ -140,13 +144,17 @@ def render_automatic_deductions(profile: UserProfile) -> tuple[DeductionResult, 
             )
 
             if profile.claim_actual_professional:
+                # Default to pauschal + 1000 if no actual costs set yet
+                default_professional = profile.actual_professional_costs if profile.actual_professional_costs > deductions.professional_expenses else (deductions.professional_expenses + 1000)
+
                 profile.actual_professional_costs = st.number_input(
                     "Actual professional expenses (CHF/year)",
-                    min_value=deductions.professional_expenses,
-                    value=profile.actual_professional_costs if profile.actual_professional_costs > 0 else 5000.0,
-                    step=100.0
+                    min_value=float(deductions.professional_expenses),
+                    value=float(default_professional),
+                    step=100.0,
+                    help="Enter your actual annual professional expenses (must be higher than pauschal to claim)"
                 )
-                st.caption("Requires: Receipts for work tools, computer, home office, etc.")
+                st.caption("📄 Requires: Receipts for work tools, computer, home office, etc.")
 
         # Property maintenance
         if deductions.property_maintenance > 0:
@@ -157,13 +165,17 @@ def render_automatic_deductions(profile: UserProfile) -> tuple[DeductionResult, 
             )
 
             if profile.claim_actual_property_maintenance:
+                # Default to pauschal * 1.5 if no actual costs set yet
+                default_property = profile.actual_property_maintenance_costs if profile.actual_property_maintenance_costs > deductions.property_maintenance else (deductions.property_maintenance * 1.5)
+
                 profile.actual_property_maintenance_costs = st.number_input(
                     "Actual property maintenance costs (CHF/year)",
-                    min_value=deductions.property_maintenance,
-                    value=profile.actual_property_maintenance_costs if profile.actual_property_maintenance_costs > 0 else deductions.property_maintenance * 1.5,
-                    step=1000.0
+                    min_value=float(deductions.property_maintenance),
+                    value=float(default_property),
+                    step=1000.0,
+                    help="Enter your actual annual property maintenance costs (must be higher than pauschal to claim)"
                 )
-                st.caption("Requires: Invoices for repairs, maintenance, renovations")
+                st.caption("📄 Requires: Invoices for repairs, maintenance, renovations")
 
     # Recalculate with actual costs if claimed
     if any([profile.claim_actual_commuting, profile.claim_actual_professional, profile.claim_actual_property_maintenance]):

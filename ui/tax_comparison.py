@@ -106,8 +106,9 @@ def render_tax_comparison(profile: UserProfile, deductions: DeductionResult):
             if tax_no_deductions.church_tax > 0:
                 st.metric("Church Tax", format_currency(tax_no_deductions.church_tax))
             st.divider()
-            st.metric("TOTAL TAX", format_currency(tax_no_deductions.total_tax))
+            st.metric("TOTAL ZH TAX", format_currency(tax_no_deductions.total_tax))
             st.caption(f"Effective Rate: {format_percent(tax_no_deductions.total_effective_rate)}")
+            st.caption("(Federal tax paid separately)")
 
     # Scenario 2: After AUTOMATIC deductions
     with col2:
@@ -122,7 +123,7 @@ def render_tax_comparison(profile: UserProfile, deductions: DeductionResult):
             if tax_auto_deductions.personalsteuer > 0:
                 st.metric("Personal Tax", format_currency(tax_auto_deductions.personalsteuer))
             st.divider()
-            st.metric("TOTAL TAX", format_currency(tax_auto_deductions.total_tax))
+            st.metric("TOTAL ZH TAX", format_currency(tax_auto_deductions.total_tax))
             st.success(f"💰 Save: {format_currency(comparison.savings_from_automatic)}")
 
     # Scenario 3: After ALL deductions
@@ -137,7 +138,7 @@ def render_tax_comparison(profile: UserProfile, deductions: DeductionResult):
             if tax_all_deductions.personalsteuer > 0:
                 st.metric("Personal Tax", format_currency(tax_all_deductions.personalsteuer))
             st.divider()
-            st.metric("TOTAL TAX", format_currency(tax_all_deductions.total_tax))
+            st.metric("TOTAL ZH TAX", format_currency(tax_all_deductions.total_tax))
             st.success(f"🎯 Total savings: {format_currency(comparison.total_savings)} ({format_percent(comparison.total_savings_percent)})")
 
     return comparison, tax_all_deductions

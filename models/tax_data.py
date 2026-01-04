@@ -164,10 +164,14 @@ class TaxResult:
     amount_to_next_bracket: float = 0.0
 
     def calculate_totals(self):
-        """Calculate total taxes and effective rates."""
+        """Calculate total taxes and effective rates.
+
+        Note: Total tax excludes federal tax as it's paid separately to the federal government.
+        Total includes only cantonal, municipal, personal, church, and wealth taxes (Zurich taxes).
+        """
         self.total_cantonal_municipal = self.cantonal_tax + self.municipal_tax
+        # Total excludes federal tax (paid separately to federal government)
         self.total_tax = (
-            self.federal_tax +
             self.cantonal_tax +
             self.municipal_tax +
             self.personalsteuer +
