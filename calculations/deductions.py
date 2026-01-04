@@ -5,6 +5,8 @@ Automatic and optional deductions based on user profile and inputs
 from models.tax_data import UserProfile, DeductionResult
 from models.constants import (
     COMMUTING_PAUSCHAL,
+    COMMUTING_MAX_FEDERAL,
+    COMMUTING_MAX_CANTONAL,
     MEAL_COSTS_WITH_SUBSIDY,
     MEAL_COSTS_WITHOUT_SUBSIDY,
     PROFESSIONAL_EXPENSES_RATE,
@@ -295,3 +297,40 @@ def validate_debt_interest(amount: float, investment_income: float = 0) -> dict:
         'max_limit': max_limit,
         'deductible': deductible
     }
+
+
+def get_adjusted_deductions_for_tax_type(deductions: DeductionResult, tax_type: str,
+                                         total_to_adjust: float = None) -> float:
+    """
+    Calculate total deductions with appropriate commuting cost caps for federal vs cantonal tax.
+
+    Swiss tax law has different limits for commuting costs:
+    - Federal tax (DBG): Max CHF 3,200
+    - Cantonal tax (Staatssteuer): Max CHF 5,000
+
+    Args:
+        deductions: DeductionResult with all deductions
+        tax_type: 'federal' or 'cantonal'
+        total_to_adjust: Optional total deductions to adjust (if not provided, uses deductions.total_deductions)
+
+    Returns:
+        Total deductions with appropriate commuting cost cap applied
+    """
+    # Use provided total or fall back to total_deductions
+    total = total_to_adjust if total_to_adjust is not None else deductions.total_deductions
+
+    # Get the raw commuting cost (before any caps)
+    raw_commuting = deductions.commuting_pauschal
+
+    # Apply the appropriate cap based on tax type
+    if tax_type == 'federal':
+        capped_commuting = min(raw_commuting, COMMUTING_MAX_FEDERAL)
+    elif tax_type == 'cantonal':
+        capped_commuting = min(raw_commuting, COMMUTING_MAX_CANTONAL)
+    else:
+        raise ValueError(f"Invalid tax_type: {tax_type}. Must be 'federal' or 'cantonal'")
+
+    # Adjust total: remove raw commuting, add capped commuting
+    adjusted_total = total - raw_commuting + capped_commuting
+
+    return adjusted_total

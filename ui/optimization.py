@@ -213,6 +213,38 @@ def render_optimization_tools(profile: UserProfile, current_deductions: Deductio
     else:
         st.info("You're already optimized! No additional savings potential found.")
 
+    # Bike Commuting Tip
+    st.divider()
+    st.subheader("🚴 Bike Commuting Tax Tip")
+
+    if current_deductions.commuting_pauschal > 0:
+        st.success("""
+        ✓ **You're already claiming commuting costs**
+
+        Did you know? Even if you bike to work (zero actual costs), you can still claim the CHF 700 pauschal deduction!
+
+        **Key points:**
+        - No receipts needed for the CHF 700 pauschal
+        - Applies even for bike commuters
+        - Covers general professional expenses related to commuting
+        """)
+    else:
+        st.warning("""
+        💡 **Are you missing out?**
+
+        If you commute to work (even by bike!), you can claim CHF 700 as a pauschal deduction without any receipts.
+
+        **To claim:**
+        1. Go back to Step 1
+        2. Check "Do you commute to work?"
+        3. Automatic CHF 700 deduction will be added
+
+        This could save you approximately:
+        - Federal tax: ~CHF 20-90 (depending on bracket)
+        - Cantonal/Municipal tax: ~CHF 100-150
+        - **Total: CHF 120-240 per year** for free!
+        """)
+
 
 # Add pandas import at the top
 import pandas as pd

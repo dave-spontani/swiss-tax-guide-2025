@@ -108,7 +108,9 @@ PILLAR_3A_RETROACTIVE_FIRST_YEAR = 2025  # Earliest gap year that can be filled
 PILLAR_3A_RETROACTIVE_MAX_YEARS = 10  # Can go back max 10 years
 
 # Professional expense deductions
-COMMUTING_PAUSCHAL = 700            # CHF 700 automatic
+COMMUTING_PAUSCHAL = 700            # CHF 700 automatic (also for bike commuters!)
+COMMUTING_MAX_FEDERAL = 3200        # Max CHF 3,200 for federal tax (DBG)
+COMMUTING_MAX_CANTONAL = 5000       # Max CHF 5,000 for cantonal tax (Staatssteuer)
 MEAL_COSTS_WITH_SUBSIDY = 1600      # CHF 7.50/day × 220 days
 MEAL_COSTS_WITHOUT_SUBSIDY = 3200   # CHF 15/day × 220 days
 PROFESSIONAL_EXPENSES_RATE = 0.03   # 3% of net salary

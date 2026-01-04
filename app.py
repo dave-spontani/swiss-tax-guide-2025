@@ -97,7 +97,13 @@ def render_deductions_breakdown(deductions):
         auto_items = []
 
         if deductions.commuting_pauschal > 0:
-            auto_items.append(("Commuting", deductions.commuting_pauschal, "No receipts"))
+            # Check if commuting exceeds limits
+            from models.constants import COMMUTING_MAX_FEDERAL, COMMUTING_MAX_CANTONAL
+            if deductions.commuting_pauschal > COMMUTING_MAX_FEDERAL:
+                note = f"Fed max: CHF {COMMUTING_MAX_FEDERAL:,} | Cant max: CHF {COMMUTING_MAX_CANTONAL:,}"
+            else:
+                note = "No receipts"
+            auto_items.append(("Commuting", deductions.commuting_pauschal, note))
         if deductions.meal_costs_pauschal > 0:
             auto_items.append(("Meals", deductions.meal_costs_pauschal, "No receipts"))
         if deductions.professional_expenses > 0:
@@ -120,6 +126,16 @@ def render_deductions_breakdown(deductions):
             auto_df['Amount'] = auto_df['Amount'].apply(format_currency)
             st.dataframe(auto_df, hide_index=True, use_container_width=True)
             st.metric("Total Automatic", format_currency(deductions.total_automatic))
+
+            # Show info about commuting caps if exceeded
+            from models.constants import COMMUTING_MAX_FEDERAL, COMMUTING_MAX_CANTONAL
+            if deductions.commuting_pauschal > COMMUTING_MAX_FEDERAL:
+                st.info(f"""
+                ℹ️ **Commuting cost caps applied:**
+                - Your commuting costs: {format_currency(deductions.commuting_pauschal)}
+                - Federal tax deduction: {format_currency(min(deductions.commuting_pauschal, COMMUTING_MAX_FEDERAL))} (max)
+                - Cantonal tax deduction: {format_currency(min(deductions.commuting_pauschal, COMMUTING_MAX_CANTONAL))} (max)
+                """)
         else:
             st.info("No automatic deductions")
 

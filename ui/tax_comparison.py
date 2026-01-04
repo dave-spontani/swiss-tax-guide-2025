@@ -9,17 +9,44 @@ from calculations.federal_tax import calculate_federal_tax
 from calculations.cantonal_tax import calculate_zurich_tax
 from calculations.church_tax import calculate_church_tax
 from calculations.wealth_tax import calculate_wealth_tax
+from calculations.deductions import get_adjusted_deductions_for_tax_type
 from utils.formatters import format_currency, format_percent
 
 
-def calculate_complete_taxes(income: float, deductions: float, profile: UserProfile) -> TaxResult:
-    """Calculate all taxes for a given income and deductions."""
+def calculate_complete_taxes(income: float, deductions: float, profile: UserProfile,
+                            deduction_result: DeductionResult = None) -> TaxResult:
+    """
+    Calculate all taxes for a given income and deductions.
+
+    Args:
+        income: Gross income
+        deductions: Total deductions (used for display purposes)
+        profile: User profile
+        deduction_result: Optional DeductionResult object for applying different caps
+                         for federal vs cantonal commuting costs
+
+    Returns:
+        TaxResult with all taxes calculated
+    """
     result = TaxResult()
     result.gross_income = income
     result.total_deductions = deductions
 
-    # Federal tax
-    fed_result = calculate_federal_tax(income, deductions)
+    # Calculate adjusted deductions for federal vs cantonal if deduction_result provided
+    if deduction_result is not None:
+        federal_deductions = get_adjusted_deductions_for_tax_type(
+            deduction_result, 'federal', total_to_adjust=deductions
+        )
+        cantonal_deductions = get_adjusted_deductions_for_tax_type(
+            deduction_result, 'cantonal', total_to_adjust=deductions
+        )
+    else:
+        # Use same deductions for both (e.g., when deductions=0)
+        federal_deductions = deductions
+        cantonal_deductions = deductions
+
+    # Federal tax (with federal commuting cap: CHF 3,200)
+    fed_result = calculate_federal_tax(income, federal_deductions)
     result.federal_tax = fed_result.federal_tax
     result.federal_effective_rate = fed_result.federal_effective_rate
     result.federal_marginal_rate = fed_result.federal_marginal_rate
@@ -27,8 +54,8 @@ def calculate_complete_taxes(income: float, deductions: float, profile: UserProf
     result.federal_breakdown = fed_result.federal_breakdown
     result.taxable_income = fed_result.taxable_income
 
-    # Cantonal tax
-    cant_result = calculate_zurich_tax(income, profile.gemeinde_steuerfuss, deductions)
+    # Cantonal tax (with cantonal commuting cap: CHF 5,000)
+    cant_result = calculate_zurich_tax(income, profile.gemeinde_steuerfuss, cantonal_deductions)
     result.einfache_staatssteuer = cant_result.einfache_staatssteuer
     result.cantonal_tax = cant_result.cantonal_tax
     result.municipal_tax = cant_result.municipal_tax
@@ -74,9 +101,24 @@ def render_tax_comparison(profile: UserProfile, deductions: DeductionResult):
     income = profile.net_salary
 
     # Calculate three scenarios
+    # Scenario 1: No deductions (no need to pass deduction_result)
     tax_no_deductions = calculate_complete_taxes(income, 0, profile)
-    tax_auto_deductions = calculate_complete_taxes(income, deductions.total_automatic, profile)
-    tax_all_deductions = calculate_complete_taxes(income, deductions.total_deductions, profile)
+
+    # Scenario 2: Automatic deductions only (pass deduction_result for commuting caps)
+    tax_auto_deductions = calculate_complete_taxes(
+        income,
+        deductions.total_automatic,
+        profile,
+        deduction_result=deductions
+    )
+
+    # Scenario 3: All deductions (pass deduction_result for commuting caps)
+    tax_all_deductions = calculate_complete_taxes(
+        income,
+        deductions.total_deductions,
+        profile,
+        deduction_result=deductions
+    )
 
     # Create comparison
     comparison = ComparisonResult()

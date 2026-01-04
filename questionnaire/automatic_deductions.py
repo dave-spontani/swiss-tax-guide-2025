@@ -117,23 +117,24 @@ def render_automatic_deductions(profile: UserProfile) -> tuple[DeductionResult, 
         # Commuting
         if deductions.commuting_pauschal > 0:
             profile.claim_actual_commuting = st.checkbox(
-                f"I have actual commuting costs > {format_currency(deductions.commuting_pauschal)}",
+                f"I have actual commuting costs ≠ {format_currency(deductions.commuting_pauschal)}",
                 value=profile.claim_actual_commuting,
-                help="Need receipts/justification for actual costs"
+                help="Claim different amount if your actual costs differ from the pauschal"
             )
 
             if profile.claim_actual_commuting:
-                # Default to pauschal + 300 if no actual costs set yet
-                default_commuting = profile.actual_commuting_costs if profile.actual_commuting_costs > deductions.commuting_pauschal else (deductions.commuting_pauschal + 300)
+                # Default to pauschal + 300 if no actual costs set yet, or use existing value
+                default_commuting = profile.actual_commuting_costs if profile.actual_commuting_costs > 0 else (deductions.commuting_pauschal + 300)
 
                 profile.actual_commuting_costs = st.number_input(
                     "Actual commuting costs (CHF/year)",
-                    min_value=float(deductions.commuting_pauschal),
+                    min_value=0.0,
                     value=float(default_commuting),
                     step=100.0,
-                    help="Enter your actual annual commuting costs (must be higher than pauschal to claim)"
+                    help="Enter your actual annual commuting costs"
                 )
                 st.caption("📄 Requires: Travel logs, public transport tickets, or car justification")
+                st.info(f"ℹ️ **Different limits apply:** Federal tax max CHF 3,200 | Cantonal tax max CHF 5,000")
 
         # Professional expenses
         if deductions.professional_expenses > 0:
