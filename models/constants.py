@@ -44,8 +44,8 @@ ZURICH_TAX_BRACKETS = [
     {'threshold': 263300,  'rate': 13},  # 13% on income above
 ]
 
-# Cantonal Steuerfuss (tax multiplier) - 2026
-CANTONAL_STEUERFUSS = 95  # 95% for Zurich canton
+# Cantonal Steuerfuss (tax multiplier) - 2024
+CANTONAL_STEUERFUSS = 98  # 98% for Zurich canton (2024)
 
 # Municipal Steuerfüsse (tax multipliers by municipality) - 2026
 MUNICIPALITY_STEUERFUESSE = {
@@ -98,9 +98,14 @@ CHURCH_TAX_MULTIPLIERS = {
 # DEDUCTION LIMITS AND CONSTANTS
 # ============================================================================
 
-# Pillar 3a limits (2024)
-PILLAR_3A_MAX_EMPLOYED = 7056      # For employed persons (updated 2025)
-PILLAR_3A_MAX_SELF_EMPLOYED = 35280  # For self-employed (20% of income)
+# Pillar 3a limits (2025)
+PILLAR_3A_MAX_EMPLOYED = 7258      # For employed persons (2025)
+PILLAR_3A_MAX_SELF_EMPLOYED = 36288  # For self-employed (20% of income, 2025)
+
+# Pillar 3a retroactive contributions (new from 2026)
+PILLAR_3A_RETROACTIVE_ENABLED = True  # Can make retroactive contributions from 2026
+PILLAR_3A_RETROACTIVE_FIRST_YEAR = 2025  # Earliest gap year that can be filled
+PILLAR_3A_RETROACTIVE_MAX_YEARS = 10  # Can go back max 10 years
 
 # Professional expense deductions
 COMMUTING_PAUSCHAL = 700            # CHF 700 automatic

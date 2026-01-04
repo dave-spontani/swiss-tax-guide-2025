@@ -56,15 +56,19 @@ def render_optimization_tools(profile: UserProfile, current_deductions: Deductio
     # Pillar 2 Buy-In Impact
     st.divider()
     st.subheader("💡 Pillar 2 Buy-In Impact")
+    st.caption("Slide to see immediate tax impact of Pillar 2 contributions")
 
-    buyins = st.number_input(
-        "Pillar 2 Buy-In Amount",
-        min_value=0,
-        max_value=100000,
-        value=int(current_deductions.pillar_2_buyins),
-        step=1000,
-        format="%d"
-    )
+    col1, col2 = st.columns([3, 1])
+
+    with col1:
+        buyins = st.slider(
+            "Pillar 2 Buy-In Amount",
+            min_value=0,
+            max_value=100000,
+            value=int(current_deductions.pillar_2_buyins),
+            step=1000,
+            format="CHF %d"
+        )
 
     if buyins > 0:
         temp_deductions_no_buyins = current_deductions.total_deductions - current_deductions.pillar_2_buyins
@@ -74,12 +78,13 @@ def render_optimization_tools(profile: UserProfile, current_deductions: Deductio
         tax_with_buyins = calculate_complete_taxes(income, temp_deductions_with_buyins, profile)
 
         buyins_savings = tax_no_buyins.total_tax - tax_with_buyins.total_tax
+        net_cost = buyins - buyins_savings
+        roi = (buyins_savings / buyins * 100) if buyins > 0 else 0
 
-        col1, col2 = st.columns(2)
-        with col1:
-            st.success(f"Tax savings: {format_currency(buyins_savings)}")
         with col2:
-            st.info(f"Net cost: {format_currency(buyins - buyins_savings)}")
+            st.metric("Tax Savings", format_currency(buyins_savings))
+            st.metric("Net Cost", format_currency(net_cost))
+            st.metric("ROI", format_percent(roi))
 
         st.warning("⚠️ Remember: 3-year lock-in period for capital withdrawal")
 
@@ -113,6 +118,66 @@ def render_optimization_tools(profile: UserProfile, current_deductions: Deductio
             st.success(f"Tax savings: {format_currency(medical_savings)}")
     else:
         st.warning(f"Below threshold. Need {format_currency(threshold - medical_costs)} more for deduction.")
+
+    # Wealth Tax Optimizer
+    st.divider()
+    st.subheader("💡 Wealth Tax Optimizer")
+
+    from calculations.wealth_tax import calculate_wealth_tax
+    from models.constants import WEALTH_DEDUCTION_PER_ADULT, WEALTH_TAX_BRACKETS
+
+    total_wealth = profile.total_wealth
+    wealth_deduction = WEALTH_DEDUCTION_PER_ADULT + (profile.num_children * 41100)  # CHF 41,100 per child
+
+    if total_wealth > 0:
+        # Calculate current wealth tax
+        wealth_tax_result = calculate_wealth_tax(
+            total_wealth,
+            profile.num_children,
+            profile.gemeinde_steuerfuss
+        )
+
+        taxable_wealth = total_wealth - wealth_deduction
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Wealth", format_currency(total_wealth))
+        with col2:
+            st.metric("Wealth Deduction", format_currency(wealth_deduction))
+        with col3:
+            st.metric("Taxable Wealth", format_currency(taxable_wealth))
+
+        # Check if close to wealth tax threshold
+        wealth_tax_threshold = WEALTH_TAX_BRACKETS[1]['threshold']  # CHF 77,000
+
+        if taxable_wealth > wealth_tax_threshold:
+            # Currently paying wealth tax
+            st.warning(f"⚠️ You are currently paying wealth tax: {format_currency(wealth_tax_result['wealth_tax'])}")
+
+            # Show how much to reduce to avoid wealth tax
+            amount_to_reduce = taxable_wealth - wealth_tax_threshold
+            st.info(f"""
+            **Optimization Strategy:**
+            - Reduce taxable wealth by {format_currency(amount_to_reduce)} to avoid wealth tax
+            - Consider Pillar 3a contributions: They reduce both income AND wealth tax!
+            - Pillar 3a assets are exempt from wealth tax
+            """)
+
+        elif taxable_wealth > (wealth_tax_threshold - 20000):
+            # Within CHF 20,000 of threshold
+            buffer = wealth_tax_threshold - taxable_wealth
+            st.success(f"✓ Currently no wealth tax ({format_currency(buffer)} buffer remaining)")
+            st.info(f"""
+            **Watch out:**
+            - You're within {format_currency(buffer)} of the wealth tax threshold (CHF 77,000)
+            - Consider Pillar 3a to build buffer: assets in Pillar 3a are exempt from wealth tax
+            - Maximum Pillar 3a: {format_currency(max_3a)} per year
+            """)
+        else:
+            st.success("✓ No wealth tax concerns - comfortable buffer")
+
+    else:
+        st.info("No wealth tax considerations (total wealth is CHF 0)")
 
     # Summary
     st.divider()
