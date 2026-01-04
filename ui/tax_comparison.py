@@ -183,4 +183,102 @@ def render_tax_comparison(profile: UserProfile, deductions: DeductionResult):
             st.metric("TOTAL ZH TAX", format_currency(tax_all_deductions.total_tax))
             st.success(f"🎯 Total savings: {format_currency(comparison.total_savings)} ({format_percent(comparison.total_savings_percent)})")
 
+    # Interactive Optimization Section
+    st.divider()
+    st.subheader("🎯 Optimize Your Deductions (Interactive)")
+    st.caption("Use the sliders below to see how changing your Pillar 3a and Pillar 2 contributions affects your taxes in real-time")
+
+    # Import constants
+    from models.constants import PILLAR_3A_MAX_EMPLOYED, PILLAR_3A_MAX_SELF_EMPLOYED
+
+    # Determine max Pillar 3a
+    max_3a = PILLAR_3A_MAX_EMPLOYED if profile.employment_type != 'self_employed' else PILLAR_3A_MAX_SELF_EMPLOYED
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        optimized_3a = st.slider(
+            "💰 Pillar 3a Contribution (CHF/year)",
+            min_value=0,
+            max_value=int(max_3a),
+            value=int(deductions.pillar_3a),
+            step=100,
+            help=f"Maximum: {format_currency(max_3a)}"
+        )
+
+    with col2:
+        optimized_2_buyins = st.slider(
+            "🏦 Pillar 2 Buy-ins (CHF/year)",
+            min_value=0,
+            max_value=100000,
+            value=int(deductions.pillar_2_buyins),
+            step=1000,
+            help="Additional contributions to your pension fund"
+        )
+
+    # Calculate optimized scenario
+    optimized_deductions = deductions.total_deductions - deductions.pillar_3a - deductions.pillar_2_buyins + optimized_3a + optimized_2_buyins
+
+    # Create temporary deduction result for optimized scenario
+    temp_deductions = DeductionResult()
+    temp_deductions.commuting_pauschal = deductions.commuting_pauschal
+    temp_deductions.meal_costs_pauschal = deductions.meal_costs_pauschal
+    temp_deductions.professional_expenses = deductions.professional_expenses
+    temp_deductions.side_income_deduction = deductions.side_income_deduction
+    temp_deductions.child_deductions = deductions.child_deductions
+    temp_deductions.property_maintenance = deductions.property_maintenance
+    temp_deductions.asset_management = deductions.asset_management
+    temp_deductions.insurance_premiums = deductions.insurance_premiums
+    temp_deductions.dual_income_deduction = deductions.dual_income_deduction
+    temp_deductions.pillar_3a = optimized_3a
+    temp_deductions.pillar_2_buyins = optimized_2_buyins
+    temp_deductions.ahv_contributions = deductions.ahv_contributions
+    temp_deductions.mortgage_interest = deductions.mortgage_interest
+    temp_deductions.other_debt_interest = deductions.other_debt_interest
+    temp_deductions.medical_costs = deductions.medical_costs
+    temp_deductions.medical_costs_deductible = deductions.medical_costs_deductible
+    temp_deductions.childcare_costs = deductions.childcare_costs
+    temp_deductions.donations = deductions.donations
+    temp_deductions.political_contributions = deductions.political_contributions
+    temp_deductions.alimony_payments = deductions.alimony_payments
+    temp_deductions.support_payments = deductions.support_payments
+    temp_deductions.calculate_totals()
+
+    tax_optimized = calculate_complete_taxes(
+        income,
+        temp_deductions.total_deductions,
+        profile,
+        deduction_result=temp_deductions
+    )
+
+    # Side-by-side comparison
+    st.divider()
+    col1, col2 = st.columns(2)
+
+    with col1:
+        with st.container(border=True):
+            st.markdown("### 📊 Current Scenario")
+            st.metric("Total Deductions", format_currency(deductions.total_deductions))
+            st.metric("Pillar 3a", format_currency(deductions.pillar_3a))
+            st.metric("Pillar 2 Buy-ins", format_currency(deductions.pillar_2_buyins))
+            st.divider()
+            st.metric("Total Tax", format_currency(tax_all_deductions.total_tax))
+
+    with col2:
+        with st.container(border=True):
+            st.markdown("### 🎯 Optimized Scenario")
+            st.metric("Total Deductions", format_currency(temp_deductions.total_deductions))
+            st.metric("Pillar 3a", format_currency(optimized_3a))
+            st.metric("Pillar 2 Buy-ins", format_currency(optimized_2_buyins))
+            st.divider()
+            st.metric("Total Tax", format_currency(tax_optimized.total_tax))
+
+            savings = tax_all_deductions.total_tax - tax_optimized.total_tax
+            if savings > 0:
+                st.success(f"💰 Additional Savings: {format_currency(savings)}")
+            elif savings < 0:
+                st.warning(f"⚠️ Higher Tax: {format_currency(-savings)}")
+            else:
+                st.info("No change")
+
     return comparison, tax_all_deductions

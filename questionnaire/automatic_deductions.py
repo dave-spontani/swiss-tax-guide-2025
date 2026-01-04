@@ -106,6 +106,60 @@ def render_automatic_deductions(profile: UserProfile) -> tuple[DeductionResult, 
     # Recalculate totals with insurance
     deductions.calculate_totals()
 
+    # Commuting Costs section (if applicable)
+    if profile.bikes_to_work or profile.uses_public_transport_car:
+        st.divider()
+        st.subheader("🚗 Commuting Costs")
+        st.caption("Adjust your commuting deductions")
+
+        commuting_breakdown = []
+
+        if profile.bikes_to_work:
+            commuting_breakdown.append(("🚴 Bike commuting", 700.0, "Pauschal, no receipts"))
+
+        if profile.uses_public_transport_car:
+            st.write("**🚗 Public Transport / Car Costs**")
+            st.caption("Use the slider to set your annual commuting costs")
+
+            # Slider for public transport/car costs
+            default_transport_costs = profile.actual_commuting_costs if profile.actual_commuting_costs > 0 else 2000.0
+
+            profile.actual_commuting_costs = st.slider(
+                "Annual Public Transport/Car Costs (CHF)",
+                min_value=0,
+                max_value=15000,
+                value=int(default_transport_costs),
+                step=100,
+                help="Actual costs for public transport tickets or car use (receipts required)"
+            )
+
+            commuting_breakdown.append((
+                "🚗 Public transport/car",
+                float(profile.actual_commuting_costs),
+                "Requires receipts"
+            ))
+
+            st.info(f"ℹ️ **Tax limits:** Federal max CHF 3,200 | Cantonal max CHF 5,000")
+
+        # Recalculate deductions with new commuting costs
+        deductions = calculate_automatic_deductions(profile)
+        deductions.insurance_premiums = min(insurance_amount, insurance_limit)
+        deductions.calculate_totals()
+
+        # Show commuting breakdown
+        if commuting_breakdown:
+            st.write("**Your Commuting Deductions:**")
+            for item, amount, note in commuting_breakdown:
+                col1, col2, col3 = st.columns([3, 2, 3])
+                with col1:
+                    st.write(f"{item}")
+                with col2:
+                    st.write(f"**{format_currency(amount)}**")
+                with col3:
+                    st.caption(note)
+
+            st.metric("Total Commuting", format_currency(deductions.commuting_pauschal))
+
     # Option to claim higher amounts
     st.divider()
     st.subheader("Want to Claim Higher Amounts?")
@@ -114,27 +168,6 @@ def render_automatic_deductions(profile: UserProfile) -> tuple[DeductionResult, 
     claim_higher = st.expander("Click here to claim actual costs for specific deductions")
 
     with claim_higher:
-        # Commuting
-        if deductions.commuting_pauschal > 0:
-            profile.claim_actual_commuting = st.checkbox(
-                f"I have actual commuting costs ≠ {format_currency(deductions.commuting_pauschal)}",
-                value=profile.claim_actual_commuting,
-                help="Claim different amount if your actual costs differ from the pauschal"
-            )
-
-            if profile.claim_actual_commuting:
-                # Default to pauschal + 300 if no actual costs set yet, or use existing value
-                default_commuting = profile.actual_commuting_costs if profile.actual_commuting_costs > 0 else (deductions.commuting_pauschal + 300)
-
-                profile.actual_commuting_costs = st.number_input(
-                    "Actual commuting costs (CHF/year)",
-                    min_value=0.0,
-                    value=float(default_commuting),
-                    step=100.0,
-                    help="Enter your actual annual commuting costs"
-                )
-                st.caption("📄 Requires: Travel logs, public transport tickets, or car justification")
-                st.info(f"ℹ️ **Different limits apply:** Federal tax max CHF 3,200 | Cantonal tax max CHF 5,000")
 
         # Professional expenses
         if deductions.professional_expenses > 0:

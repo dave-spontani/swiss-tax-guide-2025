@@ -23,6 +23,8 @@ class UserProfile:
 
     # Employment details (for automatic deductions)
     commutes_to_work: bool = True
+    bikes_to_work: bool = False  # CHF 700 pauschal if True
+    uses_public_transport_car: bool = False  # Can claim actual costs
     works_away_from_home: bool = True
     employer_meal_subsidy: bool = False
 

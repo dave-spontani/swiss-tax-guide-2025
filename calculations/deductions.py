@@ -43,11 +43,18 @@ def calculate_automatic_deductions(profile: UserProfile) -> DeductionResult:
     result = DeductionResult()
 
     # Commuting (if employed and commutes)
-    if profile.employment_type in ['employed', 'both'] and profile.commutes_to_work:
-        if profile.claim_actual_commuting:
-            result.commuting_pauschal = profile.actual_commuting_costs
-        else:
-            result.commuting_pauschal = COMMUTING_PAUSCHAL
+    if profile.employment_type in ['employed', 'both']:
+        commuting_total = 0.0
+
+        # Bike commuting: CHF 700 pauschal (no receipts)
+        if profile.bikes_to_work:
+            commuting_total += COMMUTING_PAUSCHAL
+
+        # Public transport/car: actual costs (with receipts)
+        if profile.uses_public_transport_car:
+            commuting_total += profile.actual_commuting_costs
+
+        result.commuting_pauschal = commuting_total
 
     # Meals (if employed and works away from home)
     if profile.employment_type in ['employed', 'both'] and profile.works_away_from_home:

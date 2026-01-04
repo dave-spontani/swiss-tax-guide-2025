@@ -109,23 +109,37 @@ def render_qualifying_questions(profile: UserProfile) -> UserProfile:
 
     # Additional employment questions
     if profile.employment_type in ['employed', 'both']:
-        col1, col2, col3 = st.columns(3)
+        st.caption("Commuting")
+        col1, col2 = st.columns(2)
 
         with col1:
-            profile.commutes_to_work = st.checkbox(
-                "Do you commute to work?",
-                value=True,
-                help="If yes, you get automatic CHF 700 commuting deduction"
+            profile.bikes_to_work = st.checkbox(
+                "🚴 I bike to work",
+                value=profile.bikes_to_work,
+                help="Automatic CHF 700 pauschal deduction (no receipts needed)"
             )
 
         with col2:
+            profile.uses_public_transport_car = st.checkbox(
+                "🚗 I use public transport/car",
+                value=profile.uses_public_transport_car,
+                help="Can claim actual costs with receipts (slider in next step)"
+            )
+
+        # Update commutes_to_work flag
+        profile.commutes_to_work = profile.bikes_to_work or profile.uses_public_transport_car
+
+        st.caption("Meals")
+        col1, col2 = st.columns(2)
+
+        with col1:
             profile.works_away_from_home = st.checkbox(
                 "Do you eat meals away from home?",
                 value=True,
                 help="If yes, you get automatic meal cost deduction"
             )
 
-        with col3:
+        with col2:
             if profile.works_away_from_home:
                 profile.employer_meal_subsidy = st.checkbox(
                     "Employer subsidizes meals?",
