@@ -101,11 +101,11 @@ def render_optional_deductions(profile: UserProfile, deductions: DeductionResult
         pillar_2_amount = st.slider(
             "Buy-in Amount (CHF)",
             min_value=0,
-            max_value=100000,
+            max_value=10000,
             value=0,
-            step=1000,
+            step=100,
             format="CHF %d",
-            help="Additional purchases into your pension fund - slide to see tax impact"
+            help="Additional purchases into your pension fund (2nd pillar). Max CHF 10,000 for this calculator."
         )
 
         deductions.pillar_2_buyins = float(pillar_2_amount)

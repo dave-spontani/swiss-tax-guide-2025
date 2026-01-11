@@ -30,19 +30,76 @@ def render_automatic_deductions(profile: UserProfile) -> tuple[DeductionResult, 
     # Create a table-like display
     deduction_items = []
 
-    if deductions.commuting_pauschal > 0:
-        deduction_items.append(("Commuting costs", deductions.commuting_pauschal, "Pauschal, no receipts"))
+    # For married couples, show per-spouse breakdown
+    if profile.marital_status == 'married':
+        # Calculate per-spouse deductions for display
+        commuting1 = 0.0
+        if profile.spouse1_bikes_to_work:
+            commuting1 += 700.0
+        if profile.spouse1_uses_public_transport_car:
+            commuting1 += profile.spouse1_actual_commuting_costs
 
-    if deductions.meal_costs_pauschal > 0:
-        meal_note = f"{'With' if profile.employer_meal_subsidy else 'Without'} employer subsidy"
-        deduction_items.append(("Meal costs", deductions.meal_costs_pauschal, meal_note))
+        commuting2 = 0.0
+        if profile.spouse2_bikes_to_work:
+            commuting2 += 700.0
+        if profile.spouse2_uses_public_transport_car:
+            commuting2 += profile.spouse2_actual_commuting_costs
 
-    if deductions.professional_expenses > 0:
-        deduction_items.append(("Professional expenses", deductions.professional_expenses, "3% of salary"))
+        if commuting1 > 0:
+            deduction_items.append(("Commuting costs (Person 1)", commuting1, "Pauschal + actual"))
+        if commuting2 > 0:
+            deduction_items.append(("Commuting costs (Person 2)", commuting2, "Pauschal + actual"))
 
-    if deductions.side_income_deduction > 0:
-        deduction_items.append(("Side income deduction", deductions.side_income_deduction, "20% or max"))
+        # Meals per spouse
+        meals1 = 0.0
+        if profile.spouse1_employment_type in ['employed', 'both'] and profile.spouse1_works_away_from_home:
+            meals1 = 1600.0 if profile.spouse1_employer_meal_subsidy else 3200.0
 
+        meals2 = 0.0
+        if profile.spouse2_employment_type in ['employed', 'both'] and profile.spouse2_works_away_from_home:
+            meals2 = 1600.0 if profile.spouse2_employer_meal_subsidy else 3200.0
+
+        if meals1 > 0:
+            meal_note1 = f"{'With' if profile.spouse1_employer_meal_subsidy else 'Without'} subsidy"
+            deduction_items.append(("Meal costs (Person 1)", meals1, meal_note1))
+        if meals2 > 0:
+            meal_note2 = f"{'With' if profile.spouse2_employer_meal_subsidy else 'Without'} subsidy"
+            deduction_items.append(("Meal costs (Person 2)", meals2, meal_note2))
+
+        # Professional expenses per spouse
+        prof1 = min(profile.spouse1_net_salary * 0.03, 4000.0) if profile.spouse1_net_salary > 0 else 0.0
+        prof2 = min(profile.spouse2_net_salary * 0.03, 4000.0) if profile.spouse2_net_salary > 0 else 0.0
+
+        if prof1 > 0:
+            deduction_items.append(("Professional expenses (Person 1)", prof1, "3% of salary"))
+        if prof2 > 0:
+            deduction_items.append(("Professional expenses (Person 2)", prof2, "3% of salary"))
+
+        # Side income per spouse
+        if profile.spouse1_has_side_income and profile.spouse1_side_income_amount > 0:
+            side1 = max(800, min(profile.spouse1_side_income_amount * 0.20, 2400))
+            deduction_items.append(("Side income deduction (Person 1)", side1, "20% or max"))
+
+        if profile.spouse2_has_side_income and profile.spouse2_side_income_amount > 0:
+            side2 = max(800, min(profile.spouse2_side_income_amount * 0.20, 2400))
+            deduction_items.append(("Side income deduction (Person 2)", side2, "20% or max"))
+
+    else:
+        # Single person - use existing logic
+        if deductions.commuting_pauschal > 0:
+            deduction_items.append(("Commuting costs", deductions.commuting_pauschal, "Pauschal, no receipts"))
+
+        if deductions.meal_costs_pauschal > 0:
+            meal_note = f"{'With' if profile.employer_meal_subsidy else 'Without'} employer subsidy"
+            deduction_items.append(("Meal costs", deductions.meal_costs_pauschal, meal_note))
+
+        if deductions.professional_expenses > 0:
+            deduction_items.append(("Professional expenses", deductions.professional_expenses, "3% of salary"))
+
+        if deductions.side_income_deduction > 0:
+            deduction_items.append(("Side income deduction", deductions.side_income_deduction, "20% or max"))
+
+    # Common deductions (same for both single and married)
     if deductions.child_deductions > 0:
         deduction_items.append((
             f"Child deductions ({profile.num_children} {'child' if profile.num_children == 1 else 'children'})",
@@ -106,8 +163,8 @@ def render_automatic_deductions(profile: UserProfile) -> tuple[DeductionResult, 
     # Recalculate totals with insurance
     deductions.calculate_totals()
 
-    # Commuting Costs section (if applicable)
-    if profile.bikes_to_work or profile.uses_public_transport_car:
+    # Commuting Costs section (ONLY for singles - married already entered in Step 1)
+    if profile.marital_status != 'married' and (profile.bikes_to_work or profile.uses_public_transport_car):
         st.divider()
         st.subheader("🚗 Commuting Costs")
         st.caption("Adjust your commuting deductions")
@@ -115,7 +172,7 @@ def render_automatic_deductions(profile: UserProfile) -> tuple[DeductionResult, 
         commuting_breakdown = []
 
         if profile.bikes_to_work:
-            commuting_breakdown.append(("🚴 Bike commuting", 700.0, "Pauschal, no receipts"))
+            commuting_breakdown.append(("🚴 Biking deduction", 700.0, "Pauschal, no receipts"))
 
         if profile.uses_public_transport_car:
             st.write("**🚗 Public Transport / Car Costs**")

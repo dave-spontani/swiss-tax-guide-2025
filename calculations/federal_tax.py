@@ -3,19 +3,23 @@ Swiss Federal Income Tax Calculation (DBG - Direct Federal Tax)
 Based on Art. 36 DBG
 """
 from typing import Dict, List
-from models.constants import FEDERAL_TAX_BRACKETS
+from models.constants import FEDERAL_TAX_BRACKETS, FEDERAL_TAX_BRACKETS_MARRIED
 from models.tax_data import TaxResult
 
 
-def calculate_federal_tax(income: float, deductions: float = 0.0) -> TaxResult:
+def calculate_federal_tax(income: float, deductions: float = 0.0, marital_status: str = 'single') -> TaxResult:
     """
     Calculate Swiss federal income tax (DBG).
 
     Formula: total_tax = base_tax + (excess_income / 100) × rate_per_hundred
 
+    For married couples, uses married tax brackets (Art. 36 Abs. 2).
+    Income should be the combined income of both spouses.
+
     Args:
-        income: Gross annual income
+        income: Gross annual income (combined for married couples)
         deductions: Total deductions
+        marital_status: 'single' or 'married'
 
     Returns:
         TaxResult with federal tax details
@@ -23,6 +27,12 @@ def calculate_federal_tax(income: float, deductions: float = 0.0) -> TaxResult:
     result = TaxResult()
     result.gross_income = income
     result.total_deductions = deductions
+
+    # Select appropriate brackets based on marital status
+    if marital_status == 'married':
+        brackets = FEDERAL_TAX_BRACKETS_MARRIED
+    else:
+        brackets = FEDERAL_TAX_BRACKETS
 
     # Calculate taxable income
     taxable_income = max(0, income - deductions)
@@ -33,12 +43,12 @@ def calculate_federal_tax(income: float, deductions: float = 0.0) -> TaxResult:
 
     # Find current bracket
     current_bracket_index = 0
-    for i in range(len(FEDERAL_TAX_BRACKETS) - 1, -1, -1):
-        if taxable_income >= FEDERAL_TAX_BRACKETS[i]['threshold']:
+    for i in range(len(brackets) - 1, -1, -1):
+        if taxable_income >= brackets[i]['threshold']:
             current_bracket_index = i
             break
 
-    current_bracket = FEDERAL_TAX_BRACKETS[current_bracket_index]
+    current_bracket = brackets[current_bracket_index]
     result.federal_bracket_index = current_bracket_index
 
     # Calculate total tax using Swiss federal formula
@@ -56,8 +66,8 @@ def calculate_federal_tax(income: float, deductions: float = 0.0) -> TaxResult:
     result.federal_marginal_rate = current_bracket['rate_per_hundred']
 
     # Calculate progress within current bracket
-    if current_bracket_index + 1 < len(FEDERAL_TAX_BRACKETS):
-        next_bracket = FEDERAL_TAX_BRACKETS[current_bracket_index + 1]
+    if current_bracket_index + 1 < len(brackets):
+        next_bracket = brackets[current_bracket_index + 1]
         bracket_range = next_bracket['threshold'] - current_bracket['threshold']
         position_in_bracket = taxable_income - current_bracket['threshold']
         result.progress_in_bracket = (position_in_bracket / bracket_range) * 100 if bracket_range > 0 else 0
@@ -67,26 +77,27 @@ def calculate_federal_tax(income: float, deductions: float = 0.0) -> TaxResult:
         result.amount_to_next_bracket = 0
 
     # Calculate breakdown for each bracket
-    result.federal_breakdown = get_federal_bracket_breakdown(taxable_income, current_bracket_index)
+    result.federal_breakdown = get_federal_bracket_breakdown(taxable_income, current_bracket_index, brackets)
 
     return result
 
 
-def get_federal_bracket_breakdown(income: float, current_bracket_index: int) -> List[Dict]:
+def get_federal_bracket_breakdown(income: float, current_bracket_index: int, brackets: List[Dict]) -> List[Dict]:
     """
     Calculate how much tax is paid in each bracket.
 
     Args:
         income: Taxable income
         current_bracket_index: Index of current tax bracket
+        brackets: Tax bracket list (single or married)
 
     Returns:
         List of dictionaries with bracket breakdown
     """
     breakdown = []
 
-    for i, bracket in enumerate(FEDERAL_TAX_BRACKETS):
-        next_bracket = FEDERAL_TAX_BRACKETS[i + 1] if i + 1 < len(FEDERAL_TAX_BRACKETS) else None
+    for i, bracket in enumerate(brackets):
+        next_bracket = brackets[i + 1] if i + 1 < len(brackets) else None
 
         # Skip first bracket if it has 0 rate (tax-free threshold)
         if bracket['rate_per_hundred'] == 0 and i == 0:

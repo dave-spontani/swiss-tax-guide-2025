@@ -3,11 +3,11 @@ Zurich Cantonal Tax Calculation
 Based on StG § 35 (adjusted for 2024)
 """
 from typing import Dict, List
-from models.constants import ZURICH_TAX_BRACKETS, CANTONAL_STEUERFUSS, PERSONALSTEUER
+from models.constants import ZURICH_TAX_BRACKETS, ZURICH_TAX_BRACKETS_MARRIED, CANTONAL_STEUERFUSS, PERSONALSTEUER
 from models.tax_data import TaxResult
 
 
-def calculate_zurich_tax(income: float, gemeinde_steuerfuss: int = 119, deductions: float = 0.0) -> TaxResult:
+def calculate_zurich_tax(income: float, gemeinde_steuerfuss: int = 119, deductions: float = 0.0, marital_status: str = 'single') -> TaxResult:
     """
     Calculate Zurich cantonal and municipal taxes.
 
@@ -15,10 +15,14 @@ def calculate_zurich_tax(income: float, gemeinde_steuerfuss: int = 119, deductio
     1. Calculate "Einfache Staatssteuer" (simple state tax) using progressive brackets
     2. Apply tax multipliers (Steuerfüsse) to get actual cantonal and municipal taxes
 
+    For married couples, uses married tax brackets (StG § 35 Abs. 2).
+    Income should be the combined income of both spouses.
+
     Args:
-        income: Gross annual income
+        income: Gross annual income (combined for married couples)
         gemeinde_steuerfuss: Municipal tax multiplier (e.g., 119 for Zürich)
         deductions: Total deductions
+        marital_status: 'single' or 'married'
 
     Returns:
         TaxResult with cantonal tax details
@@ -26,6 +30,12 @@ def calculate_zurich_tax(income: float, gemeinde_steuerfuss: int = 119, deductio
     result = TaxResult()
     result.gross_income = income
     result.total_deductions = deductions
+
+    # Select appropriate brackets based on marital status
+    if marital_status == 'married':
+        brackets = ZURICH_TAX_BRACKETS_MARRIED
+    else:
+        brackets = ZURICH_TAX_BRACKETS
 
     # Calculate taxable income
     taxable_income = max(0, income - deductions)
@@ -39,8 +49,8 @@ def calculate_zurich_tax(income: float, gemeinde_steuerfuss: int = 119, deductio
     current_bracket_index = 0
     breakdown = []
 
-    for i, bracket in enumerate(ZURICH_TAX_BRACKETS):
-        next_bracket = ZURICH_TAX_BRACKETS[i + 1] if i + 1 < len(ZURICH_TAX_BRACKETS) else None
+    for i, bracket in enumerate(brackets):
+        next_bracket = brackets[i + 1] if i + 1 < len(brackets) else None
 
         if taxable_income > bracket['threshold']:
             current_bracket_index = i
@@ -92,13 +102,13 @@ def calculate_zurich_tax(income: float, gemeinde_steuerfuss: int = 119, deductio
         result.cantonal_effective_rate = (result.total_cantonal_municipal / income) * 100
 
     # Get current bracket info
-    current_bracket = ZURICH_TAX_BRACKETS[current_bracket_index]
+    current_bracket = brackets[current_bracket_index]
     result.cantonal_bracket_index = current_bracket_index
     result.cantonal_marginal_rate = current_bracket['rate']
 
     # Calculate progress within current bracket
-    if current_bracket_index + 1 < len(ZURICH_TAX_BRACKETS):
-        next_bracket = ZURICH_TAX_BRACKETS[current_bracket_index + 1]
+    if current_bracket_index + 1 < len(brackets):
+        next_bracket = brackets[current_bracket_index + 1]
         bracket_range = next_bracket['threshold'] - current_bracket['threshold']
         position_in_bracket = taxable_income - current_bracket['threshold']
         result.progress_in_bracket = (position_in_bracket / bracket_range) * 100 if bracket_range > 0 else 0

@@ -11,7 +11,9 @@ from models.constants import (
     MEAL_COSTS_WITHOUT_SUBSIDY,
     PROFESSIONAL_EXPENSES_RATE,
     PROFESSIONAL_EXPENSES_MAX,
-    SIDE_INCOME_DEDUCTION,
+    SIDE_INCOME_DEDUCTION_MIN,
+    SIDE_INCOME_DEDUCTION_RATE,
+    SIDE_INCOME_DEDUCTION_MAX,
     CHILD_DEDUCTION_ZH,
     PROPERTY_MAINTENANCE_PAUSCHAL,
     ASSET_MANAGEMENT_RATE,
@@ -34,6 +36,8 @@ def calculate_automatic_deductions(profile: UserProfile) -> DeductionResult:
     Calculate automatic deductions based on user profile.
     These are deductions that don't require receipts (pauschal).
 
+    For married couples, calculates employment deductions per spouse separately and sums them.
+
     Args:
         profile: User profile with all personal information
 
@@ -42,40 +46,131 @@ def calculate_automatic_deductions(profile: UserProfile) -> DeductionResult:
     """
     result = DeductionResult()
 
-    # Commuting (if employed and commutes)
-    if profile.employment_type in ['employed', 'both']:
-        commuting_total = 0.0
+    if profile.marital_status == 'married':
+        # === MARRIED COUPLES: Calculate per-spouse deductions ===
 
-        # Bike commuting: CHF 700 pauschal (no receipts)
-        if profile.bikes_to_work:
-            commuting_total += COMMUTING_PAUSCHAL
+        # === SPOUSE 1 DEDUCTIONS ===
 
-        # Public transport/car: actual costs (with receipts)
-        if profile.uses_public_transport_car:
-            commuting_total += profile.actual_commuting_costs
+        # Commuting (spouse 1)
+        commuting1 = 0.0
+        if profile.spouse1_employment_type in ['employed', 'both']:
+            if profile.spouse1_bikes_to_work:
+                commuting1 += COMMUTING_PAUSCHAL  # CHF 700 biking deduction
+            if profile.spouse1_uses_public_transport_car:
+                commuting1 += profile.spouse1_actual_commuting_costs
 
-        result.commuting_pauschal = commuting_total
+        # Meals (spouse 1)
+        meals1 = 0.0
+        if profile.spouse1_employment_type in ['employed', 'both'] and profile.spouse1_works_away_from_home:
+            if profile.spouse1_employer_meal_subsidy:
+                meals1 = MEAL_COSTS_WITH_SUBSIDY
+            else:
+                meals1 = MEAL_COSTS_WITHOUT_SUBSIDY
 
-    # Meals (if employed and works away from home)
-    if profile.employment_type in ['employed', 'both'] and profile.works_away_from_home:
-        if profile.employer_meal_subsidy:
-            result.meal_costs_pauschal = MEAL_COSTS_WITH_SUBSIDY
-        else:
-            result.meal_costs_pauschal = MEAL_COSTS_WITHOUT_SUBSIDY
-
-    # Professional expenses (3% of net salary, max CHF 4,000)
-    if profile.employment_type in ['employed', 'both'] and profile.net_salary > 0:
-        if profile.claim_actual_professional:
-            result.professional_expenses = profile.actual_professional_costs
-        else:
-            result.professional_expenses = min(
-                profile.net_salary * PROFESSIONAL_EXPENSES_RATE,
+        # Professional expenses (spouse 1)
+        professional1 = 0.0
+        if profile.spouse1_employment_type in ['employed', 'both'] and profile.spouse1_net_salary > 0:
+            professional1 = min(
+                profile.spouse1_net_salary * PROFESSIONAL_EXPENSES_RATE,
                 PROFESSIONAL_EXPENSES_MAX
             )
 
-    # Side income deduction
-    if profile.has_side_income:
-        result.side_income_deduction = SIDE_INCOME_DEDUCTION
+        # Side income deduction (spouse 1)
+        side_income1 = 0.0
+        if profile.spouse1_has_side_income and profile.spouse1_side_income_amount > 0:
+            calculated = profile.spouse1_side_income_amount * SIDE_INCOME_DEDUCTION_RATE
+            side_income1 = max(SIDE_INCOME_DEDUCTION_MIN, min(calculated, SIDE_INCOME_DEDUCTION_MAX))
+
+        # === SPOUSE 2 DEDUCTIONS ===
+
+        # Commuting (spouse 2)
+        commuting2 = 0.0
+        if profile.spouse2_employment_type in ['employed', 'both']:
+            if profile.spouse2_bikes_to_work:
+                commuting2 += COMMUTING_PAUSCHAL
+            if profile.spouse2_uses_public_transport_car:
+                commuting2 += profile.spouse2_actual_commuting_costs
+
+        # Meals (spouse 2)
+        meals2 = 0.0
+        if profile.spouse2_employment_type in ['employed', 'both'] and profile.spouse2_works_away_from_home:
+            if profile.spouse2_employer_meal_subsidy:
+                meals2 = MEAL_COSTS_WITH_SUBSIDY
+            else:
+                meals2 = MEAL_COSTS_WITHOUT_SUBSIDY
+
+        # Professional expenses (spouse 2)
+        professional2 = 0.0
+        if profile.spouse2_employment_type in ['employed', 'both'] and profile.spouse2_net_salary > 0:
+            professional2 = min(
+                profile.spouse2_net_salary * PROFESSIONAL_EXPENSES_RATE,
+                PROFESSIONAL_EXPENSES_MAX
+            )
+
+        # Side income deduction (spouse 2)
+        side_income2 = 0.0
+        if profile.spouse2_has_side_income and profile.spouse2_side_income_amount > 0:
+            calculated = profile.spouse2_side_income_amount * SIDE_INCOME_DEDUCTION_RATE
+            side_income2 = max(SIDE_INCOME_DEDUCTION_MIN, min(calculated, SIDE_INCOME_DEDUCTION_MAX))
+
+        # === COMBINE SPOUSE DEDUCTIONS ===
+        result.commuting_pauschal = commuting1 + commuting2
+        result.meal_costs_pauschal = meals1 + meals2
+        result.professional_expenses = professional1 + professional2
+        result.side_income_deduction = side_income1 + side_income2
+
+        # Dual income deduction (both must work)
+        both_work = (
+            profile.spouse1_employment_type in ['employed', 'self_employed', 'both'] and
+            profile.spouse2_employment_type in ['employed', 'self_employed', 'both']
+        )
+        if both_work:
+            result.dual_income_deduction = DUAL_INCOME_DEDUCTION_ZH
+
+    else:
+        # === SINGLE PERSON: Use existing logic (backward compatible) ===
+
+        # Commuting (if employed and commutes)
+        if profile.employment_type in ['employed', 'both']:
+            commuting_total = 0.0
+
+            # Bike commuting: CHF 700 pauschal (no receipts)
+            if profile.bikes_to_work:
+                commuting_total += COMMUTING_PAUSCHAL
+
+            # Public transport/car: actual costs (with receipts)
+            if profile.uses_public_transport_car:
+                commuting_total += profile.actual_commuting_costs
+
+            result.commuting_pauschal = commuting_total
+
+        # Meals (if employed and works away from home)
+        if profile.employment_type in ['employed', 'both'] and profile.works_away_from_home:
+            if profile.employer_meal_subsidy:
+                result.meal_costs_pauschal = MEAL_COSTS_WITH_SUBSIDY
+            else:
+                result.meal_costs_pauschal = MEAL_COSTS_WITHOUT_SUBSIDY
+
+        # Professional expenses (3% of net salary, max CHF 4,000)
+        if profile.employment_type in ['employed', 'both'] and profile.net_salary > 0:
+            if profile.claim_actual_professional:
+                result.professional_expenses = profile.actual_professional_costs
+            else:
+                result.professional_expenses = min(
+                    profile.net_salary * PROFESSIONAL_EXPENSES_RATE,
+                    PROFESSIONAL_EXPENSES_MAX
+                )
+
+        # Side income deduction (Nebenerwerb)
+        # Formula: max(800, min(0.20 × side_income, 2400))
+        if profile.has_side_income and profile.side_income_amount > 0:
+            calculated_deduction = profile.side_income_amount * SIDE_INCOME_DEDUCTION_RATE
+            result.side_income_deduction = max(
+                SIDE_INCOME_DEDUCTION_MIN,
+                min(calculated_deduction, SIDE_INCOME_DEDUCTION_MAX)
+            )
+
+    # === COMMON DEDUCTIONS (SAME FOR BOTH SINGLE AND MARRIED) ===
 
     # Child deductions (CHF 9,000 per child in ZH)
     result.child_deductions = profile.num_children * CHILD_DEDUCTION_ZH
@@ -91,10 +186,6 @@ def calculate_automatic_deductions(profile: UserProfile) -> DeductionResult:
     if profile.has_securities and profile.securities_value:
         asset_mgmt = profile.securities_value * ASSET_MANAGEMENT_RATE
         result.asset_management = min(asset_mgmt, ASSET_MANAGEMENT_MAX)
-
-    # Dual income (if married and both work)
-    if profile.marital_status == 'married' and profile.both_spouses_work:
-        result.dual_income_deduction = DUAL_INCOME_DEDUCTION_ZH
 
     # Calculate total automatic
     result.calculate_totals()

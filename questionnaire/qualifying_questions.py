@@ -81,86 +81,33 @@ def render_qualifying_questions(profile: UserProfile) -> UserProfile:
     # Employment & Income Section
     st.subheader("Employment & Income")
 
-    col1, col2 = st.columns(2)
-
-    with col1:
-        profile.employment_type = st.selectbox(
-            "Employment Status",
-            options=['employed', 'self_employed', 'both', 'retired', 'not_working'],
-            index=0,
-            format_func=lambda x: {
-                'employed': 'Employed',
-                'self_employed': 'Self-employed',
-                'both': 'Both employed and self-employed',
-                'retired': 'Retired',
-                'not_working': 'Not working'
-            }[x],
-            help="Your primary employment status"
-        )
-
-    with col2:
-        profile.net_salary = st.number_input(
-            "Annual Net Salary (CHF)",
-            min_value=0.0,
-            value=profile.net_salary if profile.net_salary > 0 else 100000.0,
-            step=1000.0,
-            help="Your annual net salary (after AHV/IV/ALV deductions)"
-        )
-
-    # Additional employment questions
-    if profile.employment_type in ['employed', 'both']:
-        st.caption("Commuting")
-        col1, col2 = st.columns(2)
-
-        with col1:
-            profile.bikes_to_work = st.checkbox(
-                "🚴 I bike to work",
-                value=profile.bikes_to_work,
-                help="Automatic CHF 700 pauschal deduction (no receipts needed)"
-            )
-
-        with col2:
-            profile.uses_public_transport_car = st.checkbox(
-                "🚗 I use public transport/car",
-                value=profile.uses_public_transport_car,
-                help="Can claim actual costs with receipts (slider in next step)"
-            )
-
-        # Update commutes_to_work flag
-        profile.commutes_to_work = profile.bikes_to_work or profile.uses_public_transport_car
-
-        st.caption("Meals")
-        col1, col2 = st.columns(2)
-
-        with col1:
-            profile.works_away_from_home = st.checkbox(
-                "Do you eat meals away from home?",
-                value=True,
-                help="If yes, you get automatic meal cost deduction"
-            )
-
-        with col2:
-            if profile.works_away_from_home:
-                profile.employer_meal_subsidy = st.checkbox(
-                    "Employer subsidizes meals?",
-                    value=False,
-                    help="Affects meal deduction amount (CHF 1,600 vs 3,200)"
-                )
-
-    # Side income
-    profile.has_side_income = st.checkbox(
-        "Do you have side income (Nebenerwerb)?",
-        value=profile.has_side_income,
-        help="If yes, you get automatic CHF 2,400 deduction"
-    )
-
-    # Married-specific questions
     if profile.marital_status == 'married':
-        profile.both_spouses_work = st.checkbox(
-            "Do both spouses work?",
-            value=profile.both_spouses_work,
-            help="If yes, you get CHF 5,900 dual income deduction"
+        # === MARRIED: Show two separate employment sections ===
+
+        st.markdown("### 👤 Person 1 Employment & Income")
+        render_spouse_employment_section(profile, spouse_num=1)
+
+        st.divider()
+
+        st.markdown("### 👤 Person 2 Employment & Income")
+        render_spouse_employment_section(profile, spouse_num=2)
+
+        # Auto-set both_spouses_work flag based on employment types
+        profile.both_spouses_work = (
+            profile.spouse1_employment_type in ['employed', 'self_employed', 'both'] and
+            profile.spouse2_employment_type in ['employed', 'self_employed', 'both']
         )
+
+        # Show combined income summary
+        combined_income = profile.spouse1_net_salary + profile.spouse2_net_salary
+        st.info(f"💰 **Combined annual income:** CHF {combined_income:,.0f}")
+
+        if profile.both_spouses_work:
+            st.success("✓ You qualify for the dual income deduction (CHF 5,900)")
+
+    else:
+        # === SINGLE: Show single employment section ===
+        render_single_employment_section(profile)
 
     # Location Section
     st.subheader("Location")
@@ -264,3 +211,220 @@ def render_qualifying_questions(profile: UserProfile) -> UserProfile:
         )
 
     return profile
+
+
+def render_spouse_employment_section(profile: UserProfile, spouse_num: int):
+    """
+    Render employment section for one spouse (married couples).
+
+    Args:
+        profile: User profile to update
+        spouse_num: 1 or 2
+    """
+    prefix = f'spouse{spouse_num}'
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        employment = st.selectbox(
+            "Employment Status",
+            options=['employed', 'self_employed', 'both', 'retired', 'not_working'],
+            index=0 if getattr(profile, f'{prefix}_employment_type') == 'employed' else 4,
+            format_func=lambda x: {
+                'employed': 'Employed',
+                'self_employed': 'Self-employed',
+                'both': 'Both employed and self-employed',
+                'retired': 'Retired',
+                'not_working': 'Not working'
+            }[x],
+            key=f"{prefix}_employment",
+            help="Employment status for this person"
+        )
+        setattr(profile, f'{prefix}_employment_type', employment)
+
+    with col2:
+        salary = st.number_input(
+            "Annual Net Salary (CHF)",
+            min_value=0.0,
+            value=getattr(profile, f'{prefix}_net_salary', 0.0),
+            step=1000.0,
+            key=f"{prefix}_salary",
+            help="Annual net salary (after AHV/IV/ALV deductions)"
+        )
+        setattr(profile, f'{prefix}_net_salary', salary)
+
+    # Only show employment details if employed
+    if employment in ['employed', 'both']:
+        st.caption("**Commuting**")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            bikes = st.checkbox(
+                "🚴 I bike to work",
+                value=getattr(profile, f'{prefix}_bikes_to_work', False),
+                key=f"{prefix}_bikes",
+                help="Automatic CHF 700 pauschal deduction (no receipts needed)"
+            )
+            setattr(profile, f'{prefix}_bikes_to_work', bikes)
+
+        with col2:
+            transport = st.checkbox(
+                "🚗 I use public transport/car",
+                value=getattr(profile, f'{prefix}_uses_public_transport_car', False),
+                key=f"{prefix}_transport",
+                help="Can claim actual costs with receipts"
+            )
+            setattr(profile, f'{prefix}_uses_public_transport_car', transport)
+
+            if transport:
+                costs = st.number_input(
+                    "Annual commuting costs (CHF)",
+                    min_value=0.0,
+                    value=getattr(profile, f'{prefix}_actual_commuting_costs', 0.0),
+                    step=100.0,
+                    key=f"{prefix}_commute_costs",
+                    help="Actual annual commuting costs (max CHF 3,200 federal, CHF 5,000 cantonal)"
+                )
+                setattr(profile, f'{prefix}_actual_commuting_costs', costs)
+
+        st.caption("**Meals**")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            meals = st.checkbox(
+                "I eat meals away from home",
+                value=getattr(profile, f'{prefix}_works_away_from_home', True),
+                key=f"{prefix}_meals",
+                help="If yes, you get automatic meal cost deduction"
+            )
+            setattr(profile, f'{prefix}_works_away_from_home', meals)
+
+        with col2:
+            if meals:
+                subsidy = st.checkbox(
+                    "Employer subsidizes meals?",
+                    value=getattr(profile, f'{prefix}_employer_meal_subsidy', False),
+                    key=f"{prefix}_subsidy",
+                    help="Affects meal deduction amount (CHF 1,600 vs 3,200)"
+                )
+                setattr(profile, f'{prefix}_employer_meal_subsidy', subsidy)
+
+    # Side income
+    st.caption("**Side Income (Nebenerwerb)**")
+    has_side = st.checkbox(
+        "I have side income",
+        value=getattr(profile, f'{prefix}_has_side_income', False),
+        key=f"{prefix}_side_income_check",
+        help="Deduction: min CHF 800, max CHF 2,400 (20% of side income)"
+    )
+    setattr(profile, f'{prefix}_has_side_income', has_side)
+
+    if has_side:
+        side_amount = st.number_input(
+            "Annual side income amount (CHF)",
+            min_value=0.0,
+            value=getattr(profile, f'{prefix}_side_income_amount', 0.0),
+            step=500.0,
+            key=f"{prefix}_side_amount",
+            help="Total side income. Deduction: min CHF 800, max CHF 2,400 (20% of side income)"
+        )
+        setattr(profile, f'{prefix}_side_income_amount', side_amount)
+
+        if side_amount > 0:
+            calculated_deduction = max(800, min(side_amount * 0.20, 2400))
+            st.caption(f"→ Estimated deduction: CHF {calculated_deduction:,.0f}")
+
+
+def render_single_employment_section(profile: UserProfile):
+    """
+    Render employment section for single individual (backward compatible).
+
+    Args:
+        profile: User profile to update
+    """
+    col1, col2 = st.columns(2)
+
+    with col1:
+        profile.employment_type = st.selectbox(
+            "Employment Status",
+            options=['employed', 'self_employed', 'both', 'retired', 'not_working'],
+            index=0,
+            format_func=lambda x: {
+                'employed': 'Employed',
+                'self_employed': 'Self-employed',
+                'both': 'Both employed and self-employed',
+                'retired': 'Retired',
+                'not_working': 'Not working'
+            }[x],
+            help="Your primary employment status"
+        )
+
+    with col2:
+        profile.net_salary = st.number_input(
+            "Annual Net Salary (CHF)",
+            min_value=0.0,
+            value=profile.net_salary if profile.net_salary > 0 else 100000.0,
+            step=1000.0,
+            help="Your annual net salary (after AHV/IV/ALV deductions)"
+        )
+
+    # Additional employment questions
+    if profile.employment_type in ['employed', 'both']:
+        st.caption("**Commuting**")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            profile.bikes_to_work = st.checkbox(
+                "🚴 I bike to work",
+                value=profile.bikes_to_work,
+                help="Automatic CHF 700 pauschal deduction (no receipts needed)"
+            )
+
+        with col2:
+            profile.uses_public_transport_car = st.checkbox(
+                "🚗 I use public transport/car",
+                value=profile.uses_public_transport_car,
+                help="Can claim actual costs with receipts (slider in next step)"
+            )
+
+        # Update commutes_to_work flag
+        profile.commutes_to_work = profile.bikes_to_work or profile.uses_public_transport_car
+
+        st.caption("**Meals**")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            profile.works_away_from_home = st.checkbox(
+                "Do you eat meals away from home?",
+                value=True,
+                help="If yes, you get automatic meal cost deduction"
+            )
+
+        with col2:
+            if profile.works_away_from_home:
+                profile.employer_meal_subsidy = st.checkbox(
+                    "Employer subsidizes meals?",
+                    value=False,
+                    help="Affects meal deduction amount (CHF 1,600 vs 3,200)"
+                )
+
+    # Side income
+    profile.has_side_income = st.checkbox(
+        "Do you have side income (Nebenerwerb)?",
+        value=profile.has_side_income,
+        help="Deduction: min CHF 800, max CHF 2,400 (20% of side income)"
+    )
+
+    if profile.has_side_income:
+        profile.side_income_amount = st.number_input(
+            "Annual side income amount (CHF)",
+            min_value=0.0,
+            value=profile.side_income_amount,
+            step=500.0,
+            help="Your total side income. Deduction: min CHF 800, max CHF 2,400 (20% of side income)"
+        )
+
+        # Show calculated deduction preview
+        if profile.side_income_amount > 0:
+            calculated = max(800, min(profile.side_income_amount * 0.20, 2400))
+            st.caption(f"→ Estimated deduction: CHF {calculated:,.0f}")

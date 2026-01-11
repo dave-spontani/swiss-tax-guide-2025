@@ -20,6 +20,7 @@ class UserProfile:
     employment_type: str = 'employed'  # 'employed', 'self_employed', 'both', 'retired', 'not_working'
     net_salary: float = 0.0
     has_side_income: bool = False
+    side_income_amount: float = 0.0
 
     # Employment details (for automatic deductions)
     commutes_to_work: bool = True
@@ -27,6 +28,37 @@ class UserProfile:
     uses_public_transport_car: bool = False  # Can claim actual costs
     works_away_from_home: bool = True
     employer_meal_subsidy: bool = False
+
+    # ========== SPOUSE-SPECIFIC EMPLOYMENT (FOR MARRIED COUPLES) ==========
+    # Spouse 1 (primary person - used for singles OR first person if married)
+    spouse1_employment_type: str = 'employed'
+    spouse1_net_salary: float = 0.0
+    spouse1_has_side_income: bool = False
+    spouse1_side_income_amount: float = 0.0
+
+    # Spouse 1 commuting
+    spouse1_bikes_to_work: bool = False
+    spouse1_uses_public_transport_car: bool = False
+    spouse1_actual_commuting_costs: float = 0.0
+
+    # Spouse 1 meals
+    spouse1_works_away_from_home: bool = True
+    spouse1_employer_meal_subsidy: bool = False
+
+    # Spouse 2 (second person - only used if married)
+    spouse2_employment_type: str = 'not_working'
+    spouse2_net_salary: float = 0.0
+    spouse2_has_side_income: bool = False
+    spouse2_side_income_amount: float = 0.0
+
+    # Spouse 2 commuting
+    spouse2_bikes_to_work: bool = False
+    spouse2_uses_public_transport_car: bool = False
+    spouse2_actual_commuting_costs: float = 0.0
+
+    # Spouse 2 meals
+    spouse2_works_away_from_home: bool = False
+    spouse2_employer_meal_subsidy: bool = False
 
     # Assets
     owns_property: bool = False

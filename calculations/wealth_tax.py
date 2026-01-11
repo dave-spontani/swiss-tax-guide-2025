@@ -2,8 +2,8 @@
 Wealth Tax Calculation for Zurich Canton
 """
 from models.constants import (
-    WEALTH_TAX_BRACKETS,
-    WEALTH_DEDUCTION_PER_ADULT,
+    WEALTH_TAX_BRACKETS_SINGLE,
+    WEALTH_TAX_BRACKETS_MARRIED,
     WEALTH_DEDUCTION_PER_CHILD,
     CANTONAL_STEUERFUSS
 )
@@ -12,21 +12,29 @@ from models.constants import (
 def calculate_wealth_tax(
     total_wealth: float,
     number_of_children: int,
-    gemeinde_steuerfuss: int
+    gemeinde_steuerfuss: int,
+    marital_status: str = 'single'
 ) -> dict:
     """
     Calculate wealth tax for Zurich canton.
 
+    Note: In Zurich, there are NO per-adult deductions. Instead:
+    - Singles use WEALTH_TAX_BRACKETS_SINGLE (threshold: CHF 80,000)
+    - Married use WEALTH_TAX_BRACKETS_MARRIED (threshold: CHF 159,000)
+    - Both can deduct CHF 41,100 per child
+
     Process:
-    1. Calculate deductions (CHF 82,200 per adult + CHF 41,100 per child)
-    2. Calculate taxable wealth
-    3. Calculate "einfache" wealth tax using progressive brackets (rates in ‰)
-    4. Apply cantonal and municipal Steuerfüsse
+    1. Select appropriate brackets based on marital status
+    2. Calculate deductions (CHF 41,100 per child only)
+    3. Calculate taxable wealth
+    4. Calculate "einfache" wealth tax using progressive brackets (rates in ‰)
+    5. Apply cantonal and municipal Steuerfüsse
 
     Args:
         total_wealth: Total assets minus liabilities
         number_of_children: Number of children
         gemeinde_steuerfuss: Municipal tax multiplier
+        marital_status: 'single' or 'married'
 
     Returns:
         Dictionary with wealth tax details
@@ -41,8 +49,14 @@ def calculate_wealth_tax(
             'deductions': 0.0
         }
 
-    # Calculate deductions (1 adult for single, + children)
-    deductions = WEALTH_DEDUCTION_PER_ADULT + (number_of_children * WEALTH_DEDUCTION_PER_CHILD)
+    # Select appropriate brackets
+    if marital_status == 'married':
+        brackets = WEALTH_TAX_BRACKETS_MARRIED
+    else:
+        brackets = WEALTH_TAX_BRACKETS_SINGLE
+
+    # Calculate deductions (ONLY for children, no per-adult deductions)
+    deductions = number_of_children * WEALTH_DEDUCTION_PER_CHILD
     taxable_wealth = max(0, total_wealth - deductions)
 
     if taxable_wealth == 0:
@@ -55,11 +69,11 @@ def calculate_wealth_tax(
             'deductions': deductions
         }
 
-    # Calculate "einfache" wealth tax using brackets
+    # Calculate "einfache" wealth tax using progressive brackets
     einfache_wealth_tax = 0
 
-    for i, bracket in enumerate(WEALTH_TAX_BRACKETS):
-        next_bracket = WEALTH_TAX_BRACKETS[i + 1] if i + 1 < len(WEALTH_TAX_BRACKETS) else None
+    for i, bracket in enumerate(brackets):
+        next_bracket = brackets[i + 1] if i + 1 < len(brackets) else None
 
         if taxable_wealth <= bracket['threshold']:
             break

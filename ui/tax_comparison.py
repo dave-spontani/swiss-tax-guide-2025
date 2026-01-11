@@ -46,7 +46,7 @@ def calculate_complete_taxes(income: float, deductions: float, profile: UserProf
         cantonal_deductions = deductions
 
     # Federal tax (with federal commuting cap: CHF 3,200)
-    fed_result = calculate_federal_tax(income, federal_deductions)
+    fed_result = calculate_federal_tax(income, federal_deductions, profile.marital_status)
     result.federal_tax = fed_result.federal_tax
     result.federal_effective_rate = fed_result.federal_effective_rate
     result.federal_marginal_rate = fed_result.federal_marginal_rate
@@ -55,7 +55,7 @@ def calculate_complete_taxes(income: float, deductions: float, profile: UserProf
     result.taxable_income = fed_result.taxable_income
 
     # Cantonal tax (with cantonal commuting cap: CHF 5,000)
-    cant_result = calculate_zurich_tax(income, profile.gemeinde_steuerfuss, cantonal_deductions)
+    cant_result = calculate_zurich_tax(income, profile.gemeinde_steuerfuss, cantonal_deductions, profile.marital_status)
     result.einfache_staatssteuer = cant_result.einfache_staatssteuer
     result.cantonal_tax = cant_result.cantonal_tax
     result.municipal_tax = cant_result.municipal_tax
@@ -83,7 +83,8 @@ def calculate_complete_taxes(income: float, deductions: float, profile: UserProf
         wealth_result = calculate_wealth_tax(
             profile.total_wealth,
             profile.num_children,
-            profile.gemeinde_steuerfuss
+            profile.gemeinde_steuerfuss,
+            profile.marital_status
         )
         result.wealth_tax = wealth_result['wealth_tax']
         result.wealth_effective_rate = wealth_result['effective_rate']
@@ -98,7 +99,12 @@ def render_tax_comparison(profile: UserProfile, deductions: DeductionResult):
     """Render 3-level tax comparison."""
     st.header("Your Tax Calculation Results")
 
-    income = profile.net_salary
+    # Calculate combined income for married couples
+    if profile.marital_status == 'married':
+        income = profile.spouse1_net_salary + profile.spouse2_net_salary
+        st.caption(f"Combined income (Person 1: {format_currency(profile.spouse1_net_salary)} + Person 2: {format_currency(profile.spouse2_net_salary)})")
+    else:
+        income = profile.net_salary
 
     # Calculate three scenarios
     # Scenario 1: No deductions (no need to pass deduction_result)
