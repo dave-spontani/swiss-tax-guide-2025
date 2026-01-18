@@ -124,10 +124,11 @@ def render_optimization_tools(profile: UserProfile, current_deductions: Deductio
     st.subheader("💡 Wealth Tax Optimizer")
 
     from calculations.wealth_tax import calculate_wealth_tax
-    from models.constants import WEALTH_DEDUCTION_PER_ADULT, WEALTH_TAX_BRACKETS
+    from models.constants import WEALTH_DEDUCTION_PER_CHILD, WEALTH_TAX_BRACKETS_SINGLE, WEALTH_TAX_BRACKETS_MARRIED
 
     total_wealth = profile.total_wealth
-    wealth_deduction = WEALTH_DEDUCTION_PER_ADULT + (profile.num_children * 41100)  # CHF 41,100 per child
+    # Note: Zurich has NO per-adult wealth deductions, only per-child
+    wealth_deduction = profile.num_children * WEALTH_DEDUCTION_PER_CHILD
 
     if total_wealth > 0:
         # Calculate current wealth tax
@@ -148,7 +149,9 @@ def render_optimization_tools(profile: UserProfile, current_deductions: Deductio
             st.metric("Taxable Wealth", format_currency(taxable_wealth))
 
         # Check if close to wealth tax threshold
-        wealth_tax_threshold = WEALTH_TAX_BRACKETS[1]['threshold']  # CHF 77,000
+        # Use appropriate bracket based on marital status
+        wealth_brackets = WEALTH_TAX_BRACKETS_MARRIED if profile.marital_status == 'married' else WEALTH_TAX_BRACKETS_SINGLE
+        wealth_tax_threshold = wealth_brackets[1]['threshold']  # First taxable bracket
 
         if taxable_wealth > wealth_tax_threshold:
             # Currently paying wealth tax
@@ -169,7 +172,7 @@ def render_optimization_tools(profile: UserProfile, current_deductions: Deductio
             st.success(f"✓ Currently no wealth tax ({format_currency(buffer)} buffer remaining)")
             st.info(f"""
             **Watch out:**
-            - You're within {format_currency(buffer)} of the wealth tax threshold (CHF 77,000)
+            - You're within {format_currency(buffer)} of the wealth tax threshold ({format_currency(wealth_tax_threshold)})
             - Consider Pillar 3a to build buffer: assets in Pillar 3a are exempt from wealth tax
             - Maximum Pillar 3a: {format_currency(max_3a)} per year
             """)

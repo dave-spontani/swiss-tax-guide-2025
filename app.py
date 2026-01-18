@@ -216,6 +216,55 @@ def render_bracket_breakdown(tax_result, profile):
         st.progress(tax_result.progress_in_bracket / 100)
         st.caption(f"{format_currency(tax_result.amount_to_next_bracket)} to next bracket")
 
+    # Wealth Tax Breakdown (if applicable)
+    if profile.total_wealth > 0:
+        st.divider()
+        st.subheader("Wealth Tax Breakdown")
+
+        from calculations.wealth_tax import calculate_wealth_tax
+        from models.constants import WEALTH_DEDUCTION_PER_CHILD
+
+        wealth_result = calculate_wealth_tax(
+            profile.total_wealth,
+            profile.num_children,
+            profile.gemeinde_steuerfuss,
+            profile.marital_status
+        )
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.metric("Total Wealth", format_currency(profile.total_wealth))
+            st.caption("Assets minus liabilities")
+
+        with col2:
+            st.metric("Wealth Deductions", format_currency(wealth_result['deductions']))
+            if profile.num_children > 0:
+                st.caption(f"{profile.num_children} × {format_currency(WEALTH_DEDUCTION_PER_CHILD)}")
+            else:
+                st.caption("No per-adult deductions in ZH")
+
+        with col3:
+            st.metric("Taxable Wealth", format_currency(wealth_result['taxable_wealth']))
+            st.caption(f"Effective rate: {format_percent(wealth_result['effective_rate'])}")
+
+        if wealth_result['wealth_tax'] > 0:
+            st.divider()
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                st.metric("Cantonal Wealth Tax", format_currency(wealth_result['cantonal_wealth_tax']))
+                st.caption(f"Cantonal Steuerfuss: 98%")
+
+            with col2:
+                st.metric("Municipal Wealth Tax", format_currency(wealth_result['municipal_wealth_tax']))
+                st.caption(f"Municipal Steuerfuss: {profile.gemeinde_steuerfuss}%")
+
+            with col3:
+                st.metric("Total Wealth Tax", format_currency(wealth_result['wealth_tax']))
+        else:
+            st.info("✓ No wealth tax payable (below threshold)")
+
 
 def render_footer():
     """Render application footer."""
