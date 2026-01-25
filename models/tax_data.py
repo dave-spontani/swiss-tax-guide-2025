@@ -60,6 +60,28 @@ class UserProfile:
     spouse2_works_away_from_home: bool = False
     spouse2_employer_meal_subsidy: bool = False
 
+    # ========== SPOUSE-SPECIFIC INSURANCE (FOR MARRIED COUPLES) ==========
+    spouse1_insurance_premiums: float = 0.0
+    spouse2_insurance_premiums: float = 0.0
+
+    # ========== SPOUSE-SPECIFIC INVESTMENTS & WEALTH (FOR MARRIED COUPLES) ==========
+    # Spouse 1 investments
+    spouse1_has_securities: bool = False
+    spouse1_securities_value: float = 0.0
+    spouse1_wealth: float = 0.0
+
+    # Spouse 2 investments
+    spouse2_has_securities: bool = False
+    spouse2_securities_value: float = 0.0
+    spouse2_wealth: float = 0.0
+
+    # ========== SPOUSE-SPECIFIC PENSION CONTRIBUTIONS (FOR MARRIED COUPLES) ==========
+    spouse1_pillar_3a: float = 0.0
+    spouse2_pillar_3a: float = 0.0
+
+    spouse1_pillar_2_buyins: float = 0.0
+    spouse2_pillar_2_buyins: float = 0.0
+
     # Assets
     owns_property: bool = False
     property_age: Optional[int] = None

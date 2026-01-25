@@ -69,9 +69,18 @@ ZURICH_TAX_BRACKETS = [
 ]
 
 # Zurich tax brackets for MARRIED couples (Verheiratetentarif - § 35 Abs. 2)
-# TODO: VERIFY THESE BRACKETS - Approximated based on federal married/single ratio
-# Official source should be verified at: https://www.zh.ch/de/steuern-finanzen/steuern/
-# Contact Zurich tax authority or use official calculator for exact values
+# NOTE: These brackets are approximated based on federal married/single ratio
+#
+# TO VERIFY: Use official Zurich tax calculator at:
+# https://www.zh.ch/de/steuern-finanzen/steuern/steuerrechner.html
+#
+# Test with married couples at different income levels:
+# CHF 30,000, 50,000, 80,000, 120,000, 150,000, 200,000, 300,000
+# Compare "Einfache Staatssteuer" results (before Steuerfuss multipliers)
+# If discrepancies > 5%, update bracket thresholds below
+#
+# Official legal source: StG § 35 Abs. 2
+# https://www.zh.ch/de/steuern-finanzen/steuern/treuhaender/steuerbuch/
 ZURICH_TAX_BRACKETS_MARRIED = [
     {'threshold': 0,       'rate': 0},   # Tax-free (estimate: ~CHF 13,800)
     {'threshold': 13800,   'rate': 1},   # Approximate
