@@ -82,15 +82,16 @@ def render_qualifying_questions(profile: UserProfile) -> UserProfile:
     st.subheader("Employment & Income")
 
     if profile.marital_status == 'married':
-        # === MARRIED: Show two separate employment sections ===
+        # === MARRIED: Show two employment sections side-by-side ===
+        spouse_col1, spouse_col2 = st.columns(2)
 
-        st.markdown("### 👤 Person 1 Employment & Income")
-        render_spouse_employment_section(profile, spouse_num=1)
+        with spouse_col1:
+            st.markdown("### 👤 Person 1")
+            render_spouse_employment_section(profile, spouse_num=1)
 
-        st.divider()
-
-        st.markdown("### 👤 Person 2 Employment & Income")
-        render_spouse_employment_section(profile, spouse_num=2)
+        with spouse_col2:
+            st.markdown("### 👤 Person 2")
+            render_spouse_employment_section(profile, spouse_num=2)
 
         # Auto-set both_spouses_work flag based on employment types
         profile.both_spouses_work = (
@@ -216,6 +217,7 @@ def render_qualifying_questions(profile: UserProfile) -> UserProfile:
 def render_spouse_employment_section(profile: UserProfile, spouse_num: int):
     """
     Render employment section for one spouse (married couples).
+    Designed to work within a column context for side-by-side layout.
 
     Args:
         profile: User profile to update
@@ -223,91 +225,85 @@ def render_spouse_employment_section(profile: UserProfile, spouse_num: int):
     """
     prefix = f'spouse{spouse_num}'
 
-    col1, col2 = st.columns(2)
+    # Employment status
+    employment = st.selectbox(
+        "Employment Status",
+        options=['employed', 'self_employed', 'both', 'retired', 'not_working'],
+        index=['employed', 'self_employed', 'both', 'retired', 'not_working'].index(
+            getattr(profile, f'{prefix}_employment_type', 'employed')
+        ),
+        format_func=lambda x: {
+            'employed': 'Employed',
+            'self_employed': 'Self-employed',
+            'both': 'Both employed and self-employed',
+            'retired': 'Retired',
+            'not_working': 'Not working'
+        }[x],
+        key=f"{prefix}_employment",
+        help="Employment status for this person"
+    )
+    setattr(profile, f'{prefix}_employment_type', employment)
 
-    with col1:
-        employment = st.selectbox(
-            "Employment Status",
-            options=['employed', 'self_employed', 'both', 'retired', 'not_working'],
-            index=0 if getattr(profile, f'{prefix}_employment_type') == 'employed' else 4,
-            format_func=lambda x: {
-                'employed': 'Employed',
-                'self_employed': 'Self-employed',
-                'both': 'Both employed and self-employed',
-                'retired': 'Retired',
-                'not_working': 'Not working'
-            }[x],
-            key=f"{prefix}_employment",
-            help="Employment status for this person"
-        )
-        setattr(profile, f'{prefix}_employment_type', employment)
-
-    with col2:
-        salary = st.number_input(
-            "Annual Net Salary (CHF)",
-            min_value=0.0,
-            value=getattr(profile, f'{prefix}_net_salary', 0.0),
-            step=1000.0,
-            key=f"{prefix}_salary",
-            help="Annual net salary (after AHV/IV/ALV deductions)"
-        )
-        setattr(profile, f'{prefix}_net_salary', salary)
+    # Salary
+    salary = st.number_input(
+        "Annual Net Salary (CHF)",
+        min_value=0.0,
+        value=getattr(profile, f'{prefix}_net_salary', 0.0),
+        step=1000.0,
+        key=f"{prefix}_salary",
+        help="Annual net salary (after AHV/IV/ALV deductions)"
+    )
+    setattr(profile, f'{prefix}_net_salary', salary)
 
     # Only show employment details if employed
     if employment in ['employed', 'both']:
         st.caption("**Commuting**")
-        col1, col2 = st.columns(2)
 
-        with col1:
-            bikes = st.checkbox(
-                "🚴 I bike to work",
-                value=getattr(profile, f'{prefix}_bikes_to_work', False),
-                key=f"{prefix}_bikes",
-                help="Automatic CHF 700 pauschal deduction (no receipts needed)"
+        bikes = st.checkbox(
+            "🚴 I bike to work",
+            value=getattr(profile, f'{prefix}_bikes_to_work', False),
+            key=f"{prefix}_bikes",
+            help="Automatic CHF 700 pauschal deduction (no receipts needed)"
+        )
+        setattr(profile, f'{prefix}_bikes_to_work', bikes)
+
+        transport = st.checkbox(
+            "🚗 I use public transport/car",
+            value=getattr(profile, f'{prefix}_uses_public_transport_car', False),
+            key=f"{prefix}_transport",
+            help="Can claim actual costs with receipts"
+        )
+        setattr(profile, f'{prefix}_uses_public_transport_car', transport)
+
+        if transport:
+            costs = st.number_input(
+                "Annual commuting costs (CHF)",
+                min_value=0.0,
+                value=getattr(profile, f'{prefix}_actual_commuting_costs', 0.0),
+                step=100.0,
+                key=f"{prefix}_commute_costs",
+                help="Actual annual commuting costs (max CHF 3,200 federal, CHF 5,000 cantonal)"
             )
-            setattr(profile, f'{prefix}_bikes_to_work', bikes)
-
-        with col2:
-            transport = st.checkbox(
-                "🚗 I use public transport/car",
-                value=getattr(profile, f'{prefix}_uses_public_transport_car', False),
-                key=f"{prefix}_transport",
-                help="Can claim actual costs with receipts"
-            )
-            setattr(profile, f'{prefix}_uses_public_transport_car', transport)
-
-            if transport:
-                costs = st.number_input(
-                    "Annual commuting costs (CHF)",
-                    min_value=0.0,
-                    value=getattr(profile, f'{prefix}_actual_commuting_costs', 0.0),
-                    step=100.0,
-                    key=f"{prefix}_commute_costs",
-                    help="Actual annual commuting costs (max CHF 3,200 federal, CHF 5,000 cantonal)"
-                )
-                setattr(profile, f'{prefix}_actual_commuting_costs', costs)
+            setattr(profile, f'{prefix}_actual_commuting_costs', costs)
 
         st.caption("**Meals**")
-        col1, col2 = st.columns(2)
 
-        with col1:
-            meals = st.checkbox(
-                "I eat meals away from home",
-                value=getattr(profile, f'{prefix}_works_away_from_home', True),
-                key=f"{prefix}_meals",
-                help="If yes, you get automatic meal cost deduction"
+        meals = st.checkbox(
+            "I eat meals away from home",
+            value=getattr(profile, f'{prefix}_works_away_from_home', True),
+            key=f"{prefix}_meals",
+            help="If yes, you get automatic meal cost deduction"
+        )
+        setattr(profile, f'{prefix}_works_away_from_home', meals)
+
+        if meals:
+            subsidy = st.checkbox(
+                "Employer subsidizes meals?",
+                value=getattr(profile, f'{prefix}_employer_meal_subsidy', False),
+                key=f"{prefix}_subsidy",
+                help="Affects meal deduction amount (CHF 1,600 vs 3,200)"
             )
-            setattr(profile, f'{prefix}_works_away_from_home', meals)
-
-        with col2:
-            if meals:
-                subsidy = st.checkbox(
-                    "Employer subsidizes meals?",
-                    value=getattr(profile, f'{prefix}_employer_meal_subsidy', False),
-                    key=f"{prefix}_subsidy",
-                    help="Affects meal deduction amount (CHF 1,600 vs 3,200)"
-                )
-                setattr(profile, f'{prefix}_employer_meal_subsidy', subsidy)
+            setattr(profile, f'{prefix}_employer_meal_subsidy', subsidy)
 
     # Side income
     st.caption("**Side Income (Nebenerwerb)**")
