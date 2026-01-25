@@ -140,15 +140,54 @@ def render_automatic_deductions(profile: UserProfile) -> tuple[DeductionResult, 
 
     insurance_limit = calculate_insurance_premium_limit(profile)
 
-    insurance_amount = st.number_input(
-        "Total Insurance Premiums (CHF/year)",
-        min_value=0.0,
-        value=0.0,
-        step=100.0,
-        help="Health insurance, accident insurance, life insurance (Säule 3b)"
-    )
+    if profile.marital_status == 'married':
+        # Separate insurance fields for married couples
+        st.caption("Enter insurance premiums separately for each person")
 
-    deductions.insurance_premiums = min(insurance_amount, insurance_limit)
+        spouse_col1, spouse_col2 = st.columns(2)
+
+        with spouse_col1:
+            st.markdown("### 👤 Person 1")
+            spouse1_insurance = st.number_input(
+                "Insurance Premiums (CHF/year)",
+                min_value=0.0,
+                value=profile.spouse1_insurance_premiums,
+                step=100.0,
+                key="spouse1_insurance",
+                help="Health insurance, accident insurance, life insurance (Säule 3b)"
+            )
+            profile.spouse1_insurance_premiums = spouse1_insurance
+            st.caption(f"Person 1: {format_currency(spouse1_insurance)}")
+
+        with spouse_col2:
+            st.markdown("### 👤 Person 2")
+            spouse2_insurance = st.number_input(
+                "Insurance Premiums (CHF/year)",
+                min_value=0.0,
+                value=profile.spouse2_insurance_premiums,
+                step=100.0,
+                key="spouse2_insurance",
+                help="Health insurance, accident insurance, life insurance (Säule 3b)"
+            )
+            profile.spouse2_insurance_premiums = spouse2_insurance
+            st.caption(f"Person 2: {format_currency(spouse2_insurance)}")
+
+        # Calculate combined insurance
+        insurance_amount = spouse1_insurance + spouse2_insurance
+        deductions.insurance_premiums = min(insurance_amount, insurance_limit)
+
+        st.info(f"💰 **Combined insurance premiums:** {format_currency(insurance_amount)}")
+
+    else:
+        # Single person insurance field
+        insurance_amount = st.number_input(
+            "Total Insurance Premiums (CHF/year)",
+            min_value=0.0,
+            value=0.0,
+            step=100.0,
+            help="Health insurance, accident insurance, life insurance (Säule 3b)"
+        )
+        deductions.insurance_premiums = min(insurance_amount, insurance_limit)
 
     col1, col2 = st.columns(2)
     with col1:

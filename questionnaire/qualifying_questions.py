@@ -161,29 +161,111 @@ def render_qualifying_questions(profile: UserProfile) -> UserProfile:
             )
 
     with col2:
-        profile.has_securities = st.checkbox(
-            "Do you have securities/investments?",
-            value=profile.has_securities,
-            help="If yes, you can deduct asset management costs"
-        )
-
-        if profile.has_securities:
-            profile.securities_value = st.number_input(
-                "Total securities value (CHF)",
-                min_value=0.0,
-                value=profile.securities_value if profile.securities_value else 100000.0,
-                step=10000.0,
-                help="Total value of your securities portfolio"
+        # Show combined or separate securities based on marital status
+        if profile.marital_status == 'married':
+            st.caption("Securities questions split by person below")
+        else:
+            profile.has_securities = st.checkbox(
+                "Do you have securities/investments?",
+                value=profile.has_securities,
+                help="If yes, you can deduct asset management costs"
             )
 
-    # Wealth
-    profile.total_wealth = st.number_input(
-        "Total Net Wealth (CHF)",
-        min_value=0.0,
-        value=profile.total_wealth,
-        step=10000.0,
-        help="Total assets minus liabilities (for wealth tax calculation)"
-    )
+            if profile.has_securities:
+                profile.securities_value = st.number_input(
+                    "Total securities value (CHF)",
+                    min_value=0.0,
+                    value=profile.securities_value if profile.securities_value else 100000.0,
+                    step=10000.0,
+                    help="Total value of your securities portfolio"
+                )
+
+    # Investments & Wealth - Split by person for married couples
+    if profile.marital_status == 'married':
+        st.subheader("Investments & Wealth")
+        st.caption("Enter investment and wealth details for each person separately")
+
+        spouse_col1, spouse_col2 = st.columns(2)
+
+        with spouse_col1:
+            st.markdown("### 👤 Person 1")
+
+            profile.spouse1_has_securities = st.checkbox(
+                "Has securities/investments?",
+                value=profile.spouse1_has_securities,
+                key="spouse1_securities_check",
+                help="If yes, can deduct asset management costs"
+            )
+
+            if profile.spouse1_has_securities:
+                profile.spouse1_securities_value = st.number_input(
+                    "Securities value (CHF)",
+                    min_value=0.0,
+                    value=profile.spouse1_securities_value if profile.spouse1_securities_value > 0 else 100000.0,
+                    step=10000.0,
+                    key="spouse1_securities_value",
+                    help="Total value of securities portfolio"
+                )
+
+            profile.spouse1_wealth = st.number_input(
+                "Net Wealth (CHF)",
+                min_value=0.0,
+                value=profile.spouse1_wealth,
+                step=10000.0,
+                key="spouse1_wealth",
+                help="Total assets minus liabilities"
+            )
+
+        with spouse_col2:
+            st.markdown("### 👤 Person 2")
+
+            profile.spouse2_has_securities = st.checkbox(
+                "Has securities/investments?",
+                value=profile.spouse2_has_securities,
+                key="spouse2_securities_check",
+                help="If yes, can deduct asset management costs"
+            )
+
+            if profile.spouse2_has_securities:
+                profile.spouse2_securities_value = st.number_input(
+                    "Securities value (CHF)",
+                    min_value=0.0,
+                    value=profile.spouse2_securities_value if profile.spouse2_securities_value > 0 else 100000.0,
+                    step=10000.0,
+                    key="spouse2_securities_value",
+                    help="Total value of securities portfolio"
+                )
+
+            profile.spouse2_wealth = st.number_input(
+                "Net Wealth (CHF)",
+                min_value=0.0,
+                value=profile.spouse2_wealth,
+                step=10000.0,
+                key="spouse2_wealth",
+                help="Total assets minus liabilities"
+            )
+
+        # Calculate combined totals
+        combined_securities = profile.spouse1_securities_value + profile.spouse2_securities_value
+        combined_wealth = profile.spouse1_wealth + profile.spouse2_wealth
+
+        # Update profile with combined values for backward compatibility
+        profile.has_securities = profile.spouse1_has_securities or profile.spouse2_has_securities
+        profile.securities_value = combined_securities
+        profile.total_wealth = combined_wealth
+
+        # Show combined summary
+        st.info(f"💰 **Combined securities:** CHF {combined_securities:,.0f} | **Combined wealth:** CHF {combined_wealth:,.0f}")
+
+    else:
+        # Wealth for single person
+        profile.total_wealth = st.number_input(
+            "Total Net Wealth (CHF)",
+            min_value=0.0,
+            value=profile.total_wealth,
+            step=10000.0,
+            help="Total assets minus liabilities (for wealth tax calculation)"
+        )
 
     # Special Circumstances Section
     st.subheader("Special Circumstances")

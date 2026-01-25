@@ -9,7 +9,7 @@ from questionnaire.automatic_deductions import render_automatic_deductions
 from questionnaire.optional_deductions import render_optional_deductions
 from ui.tax_comparison import render_tax_comparison
 from ui.optimization import render_optimization_tools
-from utils.formatters import format_currency
+from utils.formatters import format_currency, format_percent
 import pandas as pd
 
 
@@ -58,6 +58,11 @@ def main():
             st.session_state.deductions
         )
 
+        # Combined Overview for Married Couples
+        if st.session_state.profile.marital_status == 'married':
+            st.divider()
+            render_combined_overview(st.session_state.profile, st.session_state.deductions)
+
         # Detailed Breakdowns
         st.divider()
         st.header("Detailed Breakdown")
@@ -84,6 +89,108 @@ def main():
 
     # Footer
     render_footer()
+
+
+def render_combined_overview(profile, deductions):
+    """Render combined overview for married couples showing totals."""
+    st.header("💰 Combined Household Overview")
+    st.caption("Summary of combined accounts and contributions for both persons")
+
+    # Income Section
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown("### 💵 Income")
+        st.metric("Person 1", format_currency(profile.spouse1_net_salary))
+        st.metric("Person 2", format_currency(profile.spouse2_net_salary))
+        combined_income = profile.spouse1_net_salary + profile.spouse2_net_salary
+        st.metric("Combined Income", format_currency(combined_income),
+                 label_visibility="visible")
+
+    # Insurance Section
+    with col2:
+        st.markdown("### 🏥 Insurance Premiums")
+        st.metric("Person 1", format_currency(profile.spouse1_insurance_premiums))
+        st.metric("Person 2", format_currency(profile.spouse2_insurance_premiums))
+        combined_insurance = profile.spouse1_insurance_premiums + profile.spouse2_insurance_premiums
+        st.metric("Combined Insurance", format_currency(combined_insurance),
+                 label_visibility="visible")
+
+    # Investments Section
+    with col3:
+        st.markdown("### 📈 Investments")
+        st.metric("Person 1 Securities", format_currency(profile.spouse1_securities_value))
+        st.metric("Person 2 Securities", format_currency(profile.spouse2_securities_value))
+        combined_securities = profile.spouse1_securities_value + profile.spouse2_securities_value
+        st.metric("Combined Securities", format_currency(combined_securities),
+                 label_visibility="visible")
+
+    st.divider()
+
+    # Wealth Section
+    st.markdown("### 💎 Net Wealth")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric("Person 1 Wealth", format_currency(profile.spouse1_wealth))
+    with col2:
+        st.metric("Person 2 Wealth", format_currency(profile.spouse2_wealth))
+    with col3:
+        combined_wealth = profile.spouse1_wealth + profile.spouse2_wealth
+        st.metric("Combined Net Wealth", format_currency(combined_wealth),
+                 help="Total assets minus liabilities for both persons")
+
+    st.divider()
+
+    # Pension Contributions Section
+    st.markdown("### 🏦 Pension Contributions")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown("**Person 1**")
+        st.metric("Pillar 3a", format_currency(profile.spouse1_pillar_3a))
+        st.metric("Pillar 2 Buy-ins", format_currency(profile.spouse1_pillar_2_buyins))
+
+    with col2:
+        st.markdown("**Person 2**")
+        st.metric("Pillar 3a", format_currency(profile.spouse2_pillar_3a))
+        st.metric("Pillar 2 Buy-ins", format_currency(profile.spouse2_pillar_2_buyins))
+
+    with col3:
+        st.markdown("**Combined**")
+        combined_3a = profile.spouse1_pillar_3a + profile.spouse2_pillar_3a
+        combined_p2 = profile.spouse1_pillar_2_buyins + profile.spouse2_pillar_2_buyins
+        st.metric("Total Pillar 3a", format_currency(combined_3a))
+        st.metric("Total Pillar 2", format_currency(combined_p2))
+
+    # Summary Box
+    st.divider()
+    with st.container(border=True):
+        st.markdown("### 📊 Household Summary")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("**Combined Totals:**")
+            st.write(f"• Total Income: **{format_currency(combined_income)}**")
+            st.write(f"• Total Insurance: **{format_currency(combined_insurance)}**")
+            st.write(f"• Total Securities: **{format_currency(combined_securities)}**")
+            st.write(f"• Total Wealth: **{format_currency(combined_wealth)}**")
+            combined_3a = profile.spouse1_pillar_3a + profile.spouse2_pillar_3a
+            combined_p2 = profile.spouse1_pillar_2_buyins + profile.spouse2_pillar_2_buyins
+            if combined_3a > 0 or combined_p2 > 0:
+                st.write(f"• Total Pillar 3a: **{format_currency(combined_3a)}**")
+                st.write(f"• Total Pillar 2: **{format_currency(combined_p2)}**")
+
+        with col2:
+            st.markdown("**Total Deductions:**")
+            st.write(f"• Automatic: **{format_currency(deductions.total_automatic)}**")
+            st.write(f"• Optional: **{format_currency(deductions.total_optional)}**")
+            if deductions.pillar_3a > 0:
+                st.write(f"  - Pillar 3a: {format_currency(deductions.pillar_3a)}")
+            if deductions.pillar_2_buyins > 0:
+                st.write(f"  - Pillar 2: {format_currency(deductions.pillar_2_buyins)}")
+            st.write(f"• **Total: {format_currency(deductions.total_deductions)}**")
 
 
 def render_deductions_breakdown(deductions):

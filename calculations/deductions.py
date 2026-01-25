@@ -224,18 +224,23 @@ def calculate_insurance_premium_limit(profile: UserProfile) -> float:
     return base_limit + child_limit
 
 
-def validate_pillar_3a(amount: float, profile: UserProfile) -> dict:
+def validate_pillar_3a(amount: float, profile: UserProfile, employment_type: str = None) -> dict:
     """
     Validate Pillar 3a contribution amount.
 
     Args:
         amount: Pillar 3a contribution
         profile: User profile
+        employment_type: Optional override for employment type (for married couples).
+                        If provided, uses this instead of profile.employment_type.
 
     Returns:
         Dictionary with validation result and max limit
     """
-    if profile.employment_type == 'self_employed':
+    # Use provided employment_type or fall back to profile.employment_type
+    emp_type = employment_type if employment_type is not None else profile.employment_type
+
+    if emp_type == 'self_employed':
         max_limit = PILLAR_3A_MAX_SELF_EMPLOYED
     else:
         max_limit = PILLAR_3A_MAX_EMPLOYED

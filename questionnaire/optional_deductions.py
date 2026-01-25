@@ -32,113 +32,298 @@ def render_optional_deductions(profile: UserProfile, deductions: DeductionResult
     # Pension & Savings Section
     st.subheader("💰 Pension & Savings")
 
-    col1, col2 = st.columns(2)
+    # Conditional rendering: Married couples get separate fields per spouse
+    if profile.marital_status == 'married':
+        st.caption("Enter contributions separately for each person")
 
-    # Pillar 3a
-    with col1:
-        st.markdown("#### Pillar 3a (2025)")
-        pillar_3a_amount = st.number_input(
-            "Current Year Contributions (CHF)",
-            min_value=0.0,
-            value=0.0,
-            step=100.0,
-            help="Contributions to your Pillar 3a account for 2025"
-        )
+        spouse_col1, spouse_col2 = st.columns(2)
 
-        validation = validate_pillar_3a(pillar_3a_amount, profile)
-        deductions.pillar_3a = validation['amount']
+        # ========== PERSON 1 ==========
+        with spouse_col1:
+            st.markdown("### 👤 Person 1")
 
-        if pillar_3a_amount > 0:
-            if not validation['is_valid']:
-                st.error(f"Exceeds maximum of {format_currency(validation['max_limit'])}")
-            else:
-                st.success(f"Remaining contribution room: {format_currency(validation['remaining'])}")
-            st.caption("📄 Required: Pillar 3a certificate from bank/insurance")
-
-        # Retroactive contributions (new from 2026)
-        st.markdown("#### 🆕 Retroactive Pillar 3a (from 2026)")
-        with st.expander("ℹ️ Fill missed contribution gaps (2025-2035)"):
-            st.info("""
-            **New from 2026:** You can now fill Pillar 3a gaps from previous years!
-
-            - Fill gaps from 2025 onwards (up to 10 years back)
-            - Maximum one annual limit per year (CHF 7,258 in 2025)
-            - Only for years where you didn't contribute the maximum
-            - Great for optimizing deductions strategically
-            """)
-
-            retroactive_amount = st.number_input(
-                "Retroactive Contributions (CHF)",
+            # Pillar 3a for Person 1
+            st.markdown("#### Pillar 3a (2025)")
+            spouse1_3a = st.number_input(
+                "Current Year Contributions (CHF)",
                 min_value=0.0,
-                max_value=72580.0,  # 10 years × 7,258
-                value=0.0,
-                step=7258.0,
-                help="Fill gaps from previous years (2025-2035)",
-                key="retroactive_3a"
+                value=profile.spouse1_pillar_3a,
+                step=100.0,
+                key="spouse1_3a",
+                help="Pillar 3a contributions for Person 1"
             )
 
-            if retroactive_amount > 0:
-                # Calculate number of gap years being filled
-                gap_years = int(retroactive_amount / 7258)
-                remaining = retroactive_amount % 7258
+            # Validate against Person 1's employment type
+            validation1 = validate_pillar_3a(
+                spouse1_3a,
+                profile,
+                employment_type=profile.spouse1_employment_type
+            )
+            profile.spouse1_pillar_3a = validation1['amount']
 
-                if remaining > 0:
-                    gap_years += 1
-                    st.warning(f"⚠️ Filling {gap_years} gap years (last year: {format_currency(remaining)})")
+            if spouse1_3a > 0:
+                if not validation1['is_valid']:
+                    st.error(f"Exceeds max: {format_currency(validation1['max_limit'])}")
                 else:
-                    st.success(f"✓ Filling {gap_years} complete gap years")
+                    st.success(f"Remaining: {format_currency(validation1['remaining'])}")
+                st.caption("📄 Required: Pillar 3a certificate")
 
-                st.caption("📄 Required: Confirmation that you had contribution gaps in those years")
+            # Retroactive Pillar 3a for Person 1
+            st.markdown("#### 🆕 Retroactive Pillar 3a")
+            with st.expander("ℹ️ Fill gaps (2025-2035)"):
+                st.info("""
+                **New from 2026:** Fill Pillar 3a gaps from previous years!
 
-                # Add to total deductions
-                deductions.pillar_3a += retroactive_amount
+                - Up to 10 years back (2025 onwards)
+                - Max one annual limit per year (CHF 7,258 in 2025)
+                - Only for years where you didn't contribute the maximum
+                """)
 
-    # Pillar 2
-    with col2:
-        st.markdown("#### Pillar 2 Buy-ins")
+                spouse1_retro_3a = st.number_input(
+                    "Retroactive Contributions (CHF)",
+                    min_value=0.0,
+                    max_value=72580.0,
+                    value=0.0,
+                    step=7258.0,
+                    key="spouse1_retro_3a",
+                    help="Fill Person 1's contribution gaps"
+                )
 
-        # Use slider for better visualization
-        pillar_2_amount = st.slider(
-            "Buy-in Amount (CHF)",
-            min_value=0,
-            max_value=10000,
-            value=0,
-            step=100,
-            format="CHF %d",
-            help="Additional purchases into your pension fund (2nd pillar). Max CHF 10,000 for this calculator."
-        )
+                if spouse1_retro_3a > 0:
+                    gap_years = int(spouse1_retro_3a / 7258)
+                    remaining_amt = spouse1_retro_3a % 7258
 
-        deductions.pillar_2_buyins = float(pillar_2_amount)
+                    if remaining_amt > 0:
+                        gap_years += 1
+                        st.warning(f"⚠️ Filling {gap_years} gap years (last year: {format_currency(remaining_amt)})")
+                    else:
+                        st.success(f"✓ Filling {gap_years} complete gap years")
 
-        if deductions.pillar_2_buyins > 0:
-            # Calculate tax savings for this contribution
-            from calculations.federal_tax import calculate_federal_tax
-            from calculations.cantonal_tax import calculate_zurich_tax
-            from calculations.deductions import calculate_automatic_deductions
+                    st.caption("📄 Required: Proof of contribution gaps")
+                    profile.spouse1_pillar_3a += spouse1_retro_3a
 
-            # Get current automatic deductions
-            auto_deductions = calculate_automatic_deductions(profile)
+            # Pillar 2 for Person 1
+            st.markdown("#### Pillar 2 Buy-ins")
+            spouse1_p2 = st.slider(
+                "Buy-in Amount (CHF)",
+                min_value=0,
+                max_value=100000,
+                value=int(profile.spouse1_pillar_2_buyins),
+                step=1000,
+                key="spouse1_p2",
+                help="Pension fund buy-ins for Person 1"
+            )
+            profile.spouse1_pillar_2_buyins = float(spouse1_p2)
 
-            # Calculate tax with and without Pillar 2
-            total_deductions_without = auto_deductions.total_automatic + deductions.pillar_3a
-            total_deductions_with = total_deductions_without + deductions.pillar_2_buyins
+            if spouse1_p2 > 0:
+                st.caption("📄 Required: Pillar 2 buy-in confirmation")
+                st.caption("⚠️ 3-year lock-in period applies")
 
-            fed_without = calculate_federal_tax(profile.net_salary, total_deductions_without)
-            fed_with = calculate_federal_tax(profile.net_salary, total_deductions_with)
+        # ========== PERSON 2 ==========
+        with spouse_col2:
+            st.markdown("### 👤 Person 2")
 
-            cant_without = calculate_zurich_tax(profile.net_salary, profile.gemeinde_steuerfuss, total_deductions_without)
-            cant_with = calculate_zurich_tax(profile.net_salary, profile.gemeinde_steuerfuss, total_deductions_with)
+            # Pillar 3a for Person 2
+            st.markdown("#### Pillar 3a (2025)")
+            spouse2_3a = st.number_input(
+                "Current Year Contributions (CHF)",
+                min_value=0.0,
+                value=profile.spouse2_pillar_3a,
+                step=100.0,
+                key="spouse2_3a",
+                help="Pillar 3a contributions for Person 2"
+            )
 
-            tax_savings = (fed_without.federal_tax - fed_with.federal_tax +
-                          cant_without.total_cantonal_municipal - cant_with.total_cantonal_municipal)
+            # Validate against Person 2's employment type
+            validation2 = validate_pillar_3a(
+                spouse2_3a,
+                profile,
+                employment_type=profile.spouse2_employment_type
+            )
+            profile.spouse2_pillar_3a = validation2['amount']
 
-            net_cost = deductions.pillar_2_buyins - tax_savings
+            if spouse2_3a > 0:
+                if not validation2['is_valid']:
+                    st.error(f"Exceeds max: {format_currency(validation2['max_limit'])}")
+                else:
+                    st.success(f"Remaining: {format_currency(validation2['remaining'])}")
+                st.caption("📄 Required: Pillar 3a certificate")
 
-            st.success(f"💰 Tax savings: **{format_currency(tax_savings)}**")
-            st.info(f"Net cost: {format_currency(net_cost)} ({format_currency(net_cost/deductions.pillar_2_buyins*100):.1f}%)")
+            # Retroactive Pillar 3a for Person 2
+            st.markdown("#### 🆕 Retroactive Pillar 3a")
+            with st.expander("ℹ️ Fill gaps (2025-2035)"):
+                st.info("""
+                **New from 2026:** Fill Pillar 3a gaps from previous years!
 
-            st.caption("📄 Required: Pillar 2 buy-in confirmation")
-            st.warning("⚠️ Remember: 3-year lock-in period for capital withdrawal")
+                - Up to 10 years back (2025 onwards)
+                - Max one annual limit per year (CHF 7,258 in 2025)
+                - Only for years where you didn't contribute the maximum
+                """)
+
+                spouse2_retro_3a = st.number_input(
+                    "Retroactive Contributions (CHF)",
+                    min_value=0.0,
+                    max_value=72580.0,
+                    value=0.0,
+                    step=7258.0,
+                    key="spouse2_retro_3a",
+                    help="Fill Person 2's contribution gaps"
+                )
+
+                if spouse2_retro_3a > 0:
+                    gap_years = int(spouse2_retro_3a / 7258)
+                    remaining_amt = spouse2_retro_3a % 7258
+
+                    if remaining_amt > 0:
+                        gap_years += 1
+                        st.warning(f"⚠️ Filling {gap_years} gap years (last year: {format_currency(remaining_amt)})")
+                    else:
+                        st.success(f"✓ Filling {gap_years} complete gap years")
+
+                    st.caption("📄 Required: Proof of contribution gaps")
+                    profile.spouse2_pillar_3a += spouse2_retro_3a
+
+            # Pillar 2 for Person 2
+            st.markdown("#### Pillar 2 Buy-ins")
+            spouse2_p2 = st.slider(
+                "Buy-in Amount (CHF)",
+                min_value=0,
+                max_value=100000,
+                value=int(profile.spouse2_pillar_2_buyins),
+                step=1000,
+                key="spouse2_p2",
+                help="Pension fund buy-ins for Person 2"
+            )
+            profile.spouse2_pillar_2_buyins = float(spouse2_p2)
+
+            if spouse2_p2 > 0:
+                st.caption("📄 Required: Pillar 2 buy-in confirmation")
+                st.caption("⚠️ 3-year lock-in period applies")
+
+        # Show combined totals
+        st.divider()
+        combined_3a = profile.spouse1_pillar_3a + profile.spouse2_pillar_3a
+        combined_p2 = profile.spouse1_pillar_2_buyins + profile.spouse2_pillar_2_buyins
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("💰 Combined Pillar 3a", format_currency(combined_3a))
+        with col2:
+            st.metric("💰 Combined Pillar 2", format_currency(combined_p2))
+
+        # Set combined totals in deductions
+        deductions.pillar_3a = combined_3a
+        deductions.pillar_2_buyins = combined_p2
+
+    else:
+        # ========== SINGLE PERSON (ORIGINAL UI) ==========
+        col1, col2 = st.columns(2)
+
+        # Pillar 3a
+        with col1:
+            st.markdown("#### Pillar 3a (2025)")
+            pillar_3a_amount = st.number_input(
+                "Current Year Contributions (CHF)",
+                min_value=0.0,
+                value=0.0,
+                step=100.0,
+                help="Contributions to your Pillar 3a account for 2025"
+            )
+
+            validation = validate_pillar_3a(pillar_3a_amount, profile)
+            deductions.pillar_3a = validation['amount']
+
+            if pillar_3a_amount > 0:
+                if not validation['is_valid']:
+                    st.error(f"Exceeds maximum of {format_currency(validation['max_limit'])}")
+                else:
+                    st.success(f"Remaining contribution room: {format_currency(validation['remaining'])}")
+                st.caption("📄 Required: Pillar 3a certificate from bank/insurance")
+
+            # Retroactive contributions (new from 2026)
+            st.markdown("#### 🆕 Retroactive Pillar 3a (from 2026)")
+            with st.expander("ℹ️ Fill missed contribution gaps (2025-2035)"):
+                st.info("""
+                **New from 2026:** You can now fill Pillar 3a gaps from previous years!
+
+                - Fill gaps from 2025 onwards (up to 10 years back)
+                - Maximum one annual limit per year (CHF 7,258 in 2025)
+                - Only for years where you didn't contribute the maximum
+                - Great for optimizing deductions strategically
+                """)
+
+                retroactive_amount = st.number_input(
+                    "Retroactive Contributions (CHF)",
+                    min_value=0.0,
+                    max_value=72580.0,  # 10 years × 7,258
+                    value=0.0,
+                    step=7258.0,
+                    help="Fill gaps from previous years (2025-2035)",
+                    key="retroactive_3a"
+                )
+
+                if retroactive_amount > 0:
+                    # Calculate number of gap years being filled
+                    gap_years = int(retroactive_amount / 7258)
+                    remaining = retroactive_amount % 7258
+
+                    if remaining > 0:
+                        gap_years += 1
+                        st.warning(f"⚠️ Filling {gap_years} gap years (last year: {format_currency(remaining)})")
+                    else:
+                        st.success(f"✓ Filling {gap_years} complete gap years")
+
+                    st.caption("📄 Required: Confirmation that you had contribution gaps in those years")
+
+                    # Add to total deductions
+                    deductions.pillar_3a += retroactive_amount
+
+        # Pillar 2
+        with col2:
+            st.markdown("#### Pillar 2 Buy-ins")
+
+            # Use slider for better visualization
+            pillar_2_amount = st.slider(
+                "Buy-in Amount (CHF)",
+                min_value=0,
+                max_value=10000,
+                value=0,
+                step=100,
+                format="CHF %d",
+                help="Additional purchases into your pension fund (2nd pillar). Max CHF 10,000 for this calculator."
+            )
+
+            deductions.pillar_2_buyins = float(pillar_2_amount)
+
+            if deductions.pillar_2_buyins > 0:
+                # Calculate tax savings for this contribution
+                from calculations.federal_tax import calculate_federal_tax
+                from calculations.cantonal_tax import calculate_zurich_tax
+                from calculations.deductions import calculate_automatic_deductions
+
+                # Get current automatic deductions
+                auto_deductions = calculate_automatic_deductions(profile)
+
+                # Calculate tax with and without Pillar 2
+                total_deductions_without = auto_deductions.total_automatic + deductions.pillar_3a
+                total_deductions_with = total_deductions_without + deductions.pillar_2_buyins
+
+                fed_without = calculate_federal_tax(profile.net_salary, total_deductions_without)
+                fed_with = calculate_federal_tax(profile.net_salary, total_deductions_with)
+
+                cant_without = calculate_zurich_tax(profile.net_salary, profile.gemeinde_steuerfuss, total_deductions_without)
+                cant_with = calculate_zurich_tax(profile.net_salary, profile.gemeinde_steuerfuss, total_deductions_with)
+
+                tax_savings = (fed_without.federal_tax - fed_with.federal_tax +
+                              cant_without.total_cantonal_municipal - cant_with.total_cantonal_municipal)
+
+                net_cost = deductions.pillar_2_buyins - tax_savings
+
+                st.success(f"💰 Tax savings: **{format_currency(tax_savings)}**")
+                st.info(f"Net cost: {format_currency(net_cost)} ({format_currency(net_cost/deductions.pillar_2_buyins*100):.1f}%)")
+
+                st.caption("📄 Required: Pillar 2 buy-in confirmation")
+                st.warning("⚠️ Remember: 3-year lock-in period for capital withdrawal")
 
     # Major Expenses Section
     st.divider()
